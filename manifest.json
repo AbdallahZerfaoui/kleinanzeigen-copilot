@@ -7,12 +7,12 @@
   "content_scripts": [
     {
       "matches": ["*://www.kleinanzeigen.de/*"],
-      "js": ["content.js"],
+      "js": ["src/content/extractListing.js"],
       "run_at": "document_end"
     }
   ],
   "action": {
     "default_title": "Kleinanzeigen Copilot",
-    "default_popup": "popup.html"
+    "default_popup": "src/popup/popup.html"
   }
 }

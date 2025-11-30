@@ -20,7 +20,8 @@
         "src/content/messageActions.js",
         "src/prompts/*.js",
         "src/storage.js",
-        "src/openrouterClient.js"
+        "src/openrouterClient.js",
+        "src/config.js"
       ],
       "matches": ["<all_urls>"]
     }

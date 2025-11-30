@@ -1,11 +1,17 @@
 // Minimal OpenRouter client for non-streaming completions.
 
-// Hardcoded API key - Replace with your actual OpenRouter API key
-const OPENROUTER_API_KEY = "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";
+import { CONFIG } from "./config.js";
+
+// Load API key from config file
+const OPENROUTER_API_KEY = CONFIG.OPENROUTER_API_KEY;
 
 export async function generateWithOpenRouter({ apiKey, model, prompt }) {
-  // Use hardcoded key if no key is provided
+  console.log("[OpenRouter] Starting API call");
+  
+  // Use provided key or fallback to hardcoded key
   const finalApiKey = apiKey || OPENROUTER_API_KEY;
+  
+  console.log("[OpenRouter] Final API key:", finalApiKey ? "Present" : "Missing");
   
   if (!finalApiKey || finalApiKey === "YOUR_API_KEY_HERE") {
     throw new Error("Missing OpenRouter API key. Please add your API key in openrouterClient.js");

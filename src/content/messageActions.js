@@ -48,9 +48,9 @@ export async function generateMessage({ listing, goalType = DEFAULT_GOAL, langua
   });
 
   try {
-    // Always try to use OpenRouter (API key is hardcoded in openrouterClient.js)
+    // Always try to use OpenRouter (API key is loaded from config.js)
     const message = await generateWithOpenRouter({
-      apiKey: null, // Will use hardcoded key from openrouterClient.js
+      apiKey: null, // Will use config file key
       model,
       prompt
     });

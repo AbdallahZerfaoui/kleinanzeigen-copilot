@@ -7,8 +7,22 @@
   "content_scripts": [
     {
       "matches": ["*://www.kleinanzeigen.de/*"],
-      "js": ["src/content/extractListing.js"],
+      "js": ["src/content/main.js"],
       "run_at": "document_end"
+    }
+  ],
+  "web_accessible_resources": [
+    {
+      "resources": [
+        "src/content/main.js",
+        "src/content/extractListing.js",
+        "src/content/uiPanel.js",
+        "src/content/messageActions.js",
+        "src/prompts/*.js",
+        "src/storage.js",
+        "src/openrouterClient.js"
+      ],
+      "matches": ["<all_urls>"]
     }
   ],
   "action": {

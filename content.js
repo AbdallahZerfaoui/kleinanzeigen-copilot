@@ -85,18 +85,43 @@ function getListingData() {
   const priceTypeMatch = priceText.match(/pro\s*[\wäöüß]+/i);
   const priceType = priceTypeMatch ? priceTypeMatch[0].toLowerCase() : null;
 
-  // 3bis. extra costs (Nebenkosten) – limit to addetails list rows
-  const extraContainers = Array.from(document.querySelectorAll(".addetailslist--detail"));
-  const extraText = extraContainers
-    .map((el) => el.textContent)
-    .join(" ")
-    .replace(/\s+/g, " ")
-    .trim();
-  const extraCostsMatch = extraText
-    ? extraText.match(/([\d.,]+)\s*€\s*(warm|kalt)?/i)
-    : null;
-  const extraCosts = extraCostsMatch ? extraCostsMatch[1].replace(/[^\d]/g, "") : "0";
-  const extraCostsType = extraCostsMatch && extraCostsMatch[2] ? extraCostsMatch[2].toLowerCase() : null;
+  // 3bis. extra costs (Nebenkosten) – inspect only addetails rows
+  let extraCosts = 0;
+  let extraCostsType = null;
+  const detailItems = Array.from(document.querySelectorAll(".addetailslist--detail"));
+
+  const parseEuroNumber = (txt) => {
+    const m = txt.match(/€\s*([\d.,]+)|([\d.,]+)\s*€/i);
+    const numStr = m ? m[1] || m[2] : null;
+    return numStr ? parseInt(numStr.replace(/[^\d]/g, ""), 10) : null;
+  };
+
+  for (const item of detailItems) {
+    const valueEl = item.querySelector(".addetailslist--detail--value");
+    const valueText = valueEl ? valueEl.textContent : item.textContent;
+
+    // Clone to strip the value span and isolate the label text
+    const clone = item.cloneNode(true);
+    const cloneValue = clone.querySelector(".addetailslist--detail--value");
+    if (cloneValue) cloneValue.remove();
+    const labelText = clone.textContent.toLowerCase();
+
+    const amount = parseEuroNumber(valueText);
+    if (amount === null) continue;
+
+    if (/extra\s*costs|nebenkosten|betriebskosten|additional\s*costs/.test(labelText)) {
+      extraCosts = amount;
+      extraCostsType = "kalt";
+      break; // explicit NK found; stop scanning
+    }
+
+    // Warm rent figure (e.g., "Warmmiete" or "Rent including utilities") if NK not found yet
+    if (!extraCosts && /rent including utilities|warmmiete|inkl\s*nk|inkl\.\s*nebenkosten|inklusive\s*nebenkosten/.test(labelText)) {
+      extraCosts = amount;
+      extraCostsType = "warm";
+      // do not break; a later NK entry should override
+    }
+  }
 
   // 4. Size: "50 m²" etc.
   const sqmMatch = fullText.match(/(\d{2,3})\s*m²/i);
@@ -115,7 +140,7 @@ function getListingData() {
     title,
     price: price ? parseInt(price, 10) : null,
     priceType,
-    extraCosts: parseInt(extraCosts, 10) || 0,
+    extraCosts: extraCosts,
     extraCostsType,
     sqm,
     location

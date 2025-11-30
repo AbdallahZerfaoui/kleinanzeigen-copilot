@@ -86,8 +86,9 @@ function getListingData() {
   const priceType = priceTypeMatch ? priceTypeMatch[0].toLowerCase() : null;
 
   // 3bis. extra costs (Nebenkosten) – inspect only addetails rows
-  let extraCosts = 0;
+  let extraCosts = null;
   let extraCostsType = null;
+  let heatingCosts = null;
   const detailItems = Array.from(document.querySelectorAll(".addetailslist--detail"));
 
   const parseEuroNumber = (txt) => {
@@ -109,14 +110,21 @@ function getListingData() {
     const amount = parseEuroNumber(valueText);
     if (amount === null) continue;
 
+    if (/heating\s*costs|heizkosten/.test(labelText)) {
+      heatingCosts = amount;
+      continue;
+    }
+
     if (/extra\s*costs|nebenkosten|betriebskosten|additional\s*costs/.test(labelText)) {
-      extraCosts = amount;
-      extraCostsType = "kalt";
-      break; // explicit NK found; stop scanning
+      if (extraCostsType !== "kalt") {
+        extraCosts = amount;
+        extraCostsType = "kalt";
+      }
+      continue;
     }
 
     // Warm rent figure (e.g., "Warmmiete" or "Rent including utilities") if NK not found yet
-    if (!extraCosts && /rent including utilities|warmmiete|inkl\s*nk|inkl\.\s*nebenkosten|inklusive\s*nebenkosten/.test(labelText)) {
+    if (extraCosts === null && /rent including utilities|warmmiete|inkl\s*nk|inkl\.\s*nebenkosten|inklusive\s*nebenkosten/.test(labelText)) {
       extraCosts = amount;
       extraCostsType = "warm";
       // do not break; a later NK entry should override
@@ -140,8 +148,9 @@ function getListingData() {
     title,
     price: price ? parseInt(price, 10) : null,
     priceType,
-    extraCosts: extraCosts,
+    extraCosts: extraCosts ?? 0,
     extraCostsType,
+    heatingCosts: heatingCosts ?? 0,
     sqm,
     location
   };
@@ -152,24 +161,25 @@ function getListingData() {
  */
 function derivePriceDetails(data) {
   const coldPrice = typeof data.price === "number" ? data.price : null;
-  const hasExtra = typeof data.extraCosts === "number";
+  const hasExtra = typeof data.extraCosts === "number" && data.extraCosts > 0;
+  const hasHeating = typeof data.heatingCosts === "number" && data.heatingCosts > 0;
+  const heating = hasHeating ? data.heatingCosts : 0;
   const extraType = data.extraCostsType ? data.extraCostsType.toLowerCase() : null;
   const isWarmFigure = hasExtra && extraType === "warm";
 
-  // If the extra figure is warm rent, NK is only derivable when cold is known.
-  const nk = hasExtra && !isWarmFigure
-    ? data.extraCosts
-    : isWarmFigure && coldPrice !== null && data.extraCosts > coldPrice
-      ? data.extraCosts - coldPrice
-      : null;
+  // Keep Nebenkosten (extraCosts) separate from heating; only combine for warm rent total.
+  let nk = null;
+  if (hasExtra && extraType === "kalt") {
+    nk = data.extraCosts;
+  }
 
   const warmPrice = isWarmFigure
     ? data.extraCosts
-    : coldPrice !== null && nk !== null
-      ? coldPrice + nk
+    : coldPrice !== null
+      ? coldPrice + (nk || 0) + heating
       : null;
 
-  return { coldPrice, warmPrice, nk };
+  return { coldPrice, warmPrice, nk, heatingCosts: heating };
 }
 
 /**
@@ -274,6 +284,7 @@ function renderOverview() {
     : data.extraCostsType === "warm"
       ? "Warmmiete angegeben"
       : "0 € Nebenkosten";
+  const heatingStr = data.heatingCosts ? `${data.heatingCosts} € Heizkosten` : "0 € Heizkosten";
   const warmPriceStr = warmPrice !== null ? `${warmPrice} € (warm)` : "Unbekannt";
   const sqmStr = data.sqm ? `${data.sqm} m²` : "Unbekannt";
   const ppsColdStr = evalResult.pricePerSqmCold
@@ -292,6 +303,7 @@ function renderOverview() {
     <div style="margin-bottom:8px;">
       <div><strong>Kaltmiete:</strong> ${coldPriceStr}</div>
       <div><strong>Nebenkosten:</strong> ${extraCostsStr}</div>
+      <div><strong>Heizkosten:</strong> ${heatingStr}</div>
       <div><strong>Warmmiete:</strong> ${warmPriceStr}</div>
       <div style="margin-top:4px;"><strong>Fläche:</strong> ${sqmStr}</div>
       <div><strong>€/m² kalt:</strong> ${ppsColdStr}</div>

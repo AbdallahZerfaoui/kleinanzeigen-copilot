@@ -89,6 +89,7 @@ function getListingData() {
   let extraCosts = null;
   let extraCostsType = null;
   let heatingCosts = null;
+  let rooms = null;
   const detailItems = Array.from(document.querySelectorAll(".addetailslist--detail"));
 
   const parseEuroNumber = (txt) => {
@@ -107,8 +108,19 @@ function getListingData() {
     if (cloneValue) cloneValue.remove();
     const labelText = clone.textContent.toLowerCase();
 
+    // Dedicated room extraction (avoids matching bathroom/bedroom)
+    if (rooms === null && /\brooms?\b|\bzimmer\b/.test(labelText)) {
+      const roomNumber = parseInt(valueText.replace(/[^\d]/g, ""), 10);
+      if (!Number.isNaN(roomNumber)) {
+        rooms = roomNumber;
+        continue;
+      }
+    }
+
     const amount = parseEuroNumber(valueText);
-    if (amount === null) continue;
+    if (amount === null) {
+      continue;
+    }
 
     if (/heating\s*costs|heizkosten/.test(labelText)) {
       heatingCosts = amount;
@@ -151,6 +163,7 @@ function getListingData() {
     extraCosts: extraCosts ?? 0,
     extraCostsType,
     heatingCosts: heatingCosts ?? 0,
+    rooms: rooms ?? null,
     sqm,
     location
   };
@@ -287,6 +300,9 @@ function renderOverview() {
   const heatingStr = data.heatingCosts ? `${data.heatingCosts} € Heizkosten` : "0 € Heizkosten";
   const warmPriceStr = warmPrice !== null ? `${warmPrice} € (warm)` : "Unbekannt";
   const sqmStr = data.sqm ? `${data.sqm} m²` : "Unbekannt";
+  const roomsStr = data.rooms !== null ? `${data.rooms}` : "Unbekannt";
+  const pprColdStr = coldPrice !== null && data.rooms ? `${(coldPrice / data.rooms).toFixed(2)} € pro Zimmer (kalt)` : "N/A";
+  const pprWarmStr = warmPrice !== null && data.rooms ? `${(warmPrice / data.rooms).toFixed(2)} € pro Zimmer (warm)` : "N/A";
   const ppsColdStr = evalResult.pricePerSqmCold
     ? `${evalResult.pricePerSqmCold.toFixed(2)} €/m² kalt`
     : "N/A";
@@ -306,6 +322,9 @@ function renderOverview() {
       <div><strong>Heizkosten:</strong> ${heatingStr}</div>
       <div><strong>Warmmiete:</strong> ${warmPriceStr}</div>
       <div style="margin-top:4px;"><strong>Fläche:</strong> ${sqmStr}</div>
+      <div><strong>Zimmer:</strong> ${roomsStr}</div>
+      <div><strong>€/Zimmer kalt:</strong> ${pprColdStr}</div>
+      <div><strong>€/Zimmer warm:</strong> ${pprWarmStr}</div>
       <div><strong>€/m² kalt:</strong> ${ppsColdStr}</div>
       <div><strong>€/m² warm:</strong> ${ppsWarmStr}</div>
     </div>

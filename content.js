@@ -63,7 +63,10 @@ function getListingData() {
     document.querySelector("h1") ||
     document.querySelector('[data-testid="ad-title"]');
 
-  const title = titleEl ? titleEl.textContent.trim() : "";
+  let title = titleEl ? titleEl.textContent.trim() : "";
+  if (title) {
+    title = title.replace(/(?:Reserved|Reserviert)\s*•\s*(?:Deleted|Gelöscht)\s*•\s*/i, "").trim();
+  }
 
   // 2. Grab the whole visible text as a crude fallback
   const fullText = document.body.innerText;
@@ -82,9 +85,17 @@ function getListingData() {
   const priceTypeMatch = priceText.match(/pro\s*[\wäöüß]+/i);
   const priceType = priceTypeMatch ? priceTypeMatch[0].toLowerCase() : null;
 
-  // 3bis. extra costs (Nebenkosten)
-  const extraCostsMatch = fullText.match(/(\d[\d\.]*)\s*€\s*(warm|kalt)?/i);
-  const extraCosts = extraCostsMatch ? extraCostsMatch[1].replace(/\./g, "") : null;
+  // 3bis. extra costs (Nebenkosten) – limit to addetails list rows
+  const extraContainers = Array.from(document.querySelectorAll(".addetailslist--detail"));
+  const extraText = extraContainers
+    .map((el) => el.textContent)
+    .join(" ")
+    .replace(/\s+/g, " ")
+    .trim();
+  const extraCostsMatch = extraText
+    ? extraText.match(/([\d.,]+)\s*€\s*(warm|kalt)?/i)
+    : null;
+  const extraCosts = extraCostsMatch ? extraCostsMatch[1].replace(/[^\d]/g, "") : "0";
   const extraCostsType = extraCostsMatch && extraCostsMatch[2] ? extraCostsMatch[2].toLowerCase() : null;
 
   // 4. Size: "50 m²" etc.
@@ -104,7 +115,7 @@ function getListingData() {
     title,
     price: price ? parseInt(price, 10) : null,
     priceType,
-    extraCosts: extraCosts ? parseInt(extraCosts, 10) : null,
+    extraCosts: parseInt(extraCosts, 10) || 0,
     extraCostsType,
     sqm,
     location
@@ -237,7 +248,7 @@ function renderOverview() {
     ? `${nk} € Nebenkosten`
     : data.extraCostsType === "warm"
       ? "Warmmiete angegeben"
-      : "Keine Angabe";
+      : "0 € Nebenkosten";
   const warmPriceStr = warmPrice !== null ? `${warmPrice} € (warm)` : "Unbekannt";
   const sqmStr = data.sqm ? `${data.sqm} m²` : "Unbekannt";
   const ppsColdStr = evalResult.pricePerSqmCold

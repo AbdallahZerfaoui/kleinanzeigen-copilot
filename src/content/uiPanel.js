@@ -5,6 +5,7 @@ const STRINGS = {
   de: {
     title: "Kleinanzeigen Copilot",
     languageLabel: "Sprache:",
+    applicationTypeLabel: "Bewerbungsart:",
     generate: "Nachricht generieren & kopieren",
     generating: "Wird generiert...",
     copied: "Nachricht wurde in die Zwischenablage kopiert.",
@@ -13,6 +14,7 @@ const STRINGS = {
   en: {
     title: "Kleinanzeigen Copilot",
     languageLabel: "Language:",
+    applicationTypeLabel: "Application type:",
     generate: "Generate & copy",
     generating: "Generating...",
     copied: "Message copied to clipboard.",
@@ -39,6 +41,7 @@ export async function injectPanel({ listing }) {
 
   const settings = await getSettings();
   let currentLanguage = settings.language || DEFAULT_LANGUAGE;
+  let currentGoalType = "single"; // Default to single
   const strings = STRINGS[currentLanguage] || STRINGS[DEFAULT_LANGUAGE];
 
   const panel = document.createElement("div");
@@ -76,6 +79,14 @@ export async function injectPanel({ listing }) {
       <select id="klein-lang-select" style="flex:1;">
         <option value="de"${currentLanguage === "de" ? " selected" : ""}>Deutsch</option>
         <option value="en"${currentLanguage === "en" ? " selected" : ""}>English</option>
+      </select>
+    </div>
+    <div style="display:flex; align-items:center; gap:6px; margin-bottom:8px;">
+      <label for="klein-goal-select" style="font-size:12px; color:#444;">${strings.applicationTypeLabel}</label>
+      <select id="klein-goal-select" style="flex:1;">
+        <option value="single"${currentGoalType === "single" ? " selected" : ""}>Single</option>
+        <option value="wg"${currentGoalType === "wg" ? " selected" : ""}>WG with friend</option>
+        <option value="commercial"${currentGoalType === "commercial" ? " selected" : ""}>Commercial / mixed use</option>
       </select>
     </div>
     <div style="margin-bottom:8px;">
@@ -134,6 +145,7 @@ export async function injectPanel({ listing }) {
 
   const closeBtn = document.getElementById("klein-copilot-close");
   const langSelect = document.getElementById("klein-lang-select");
+  const goalSelect = document.getElementById("klein-goal-select");
   const generateBtn = document.getElementById("klein-generate-btn");
   const statusEl = document.getElementById("klein-status");
 
@@ -151,6 +163,11 @@ export async function injectPanel({ listing }) {
     await setSettings({ language: currentLanguage });
     const s = refreshStrings();
     generateBtn.textContent = s.generate;
+    setStatus("");
+  });
+
+  goalSelect.addEventListener("change", (e) => {
+    currentGoalType = e.target.value;
     setStatus("");
   });
 
@@ -187,7 +204,7 @@ export async function injectPanel({ listing }) {
     try {
       const message = await generateMessage({
         listing,
-        goalType: "single",
+        goalType: currentGoalType,
         language: currentLanguage
       });
 

@@ -24,9 +24,17 @@ const DEFAULT_LANGUAGE = "de";
 
 const formatEuros = (value) => (value ? `${value} €` : "–");
 const formatSqm = (value) => (value ? `${value} m²` : "–");
-const formatRooms = (value) => (value ? `${value} Zimmer` : "–");
+const formatRooms = (value) => {
+  if (value === null || value === undefined) return "–";
+  // Ensure we preserve decimal places
+  const numValue = typeof value === 'string' ? parseFloat(value) : value;
+  return `${numValue} Zimmer`;
+};
 
 export async function injectPanel({ listing }) {
+  console.log("[UI] injectPanel called with listing:", listing);
+  console.log("[UI] listing.rooms:", listing.rooms, "type:", typeof listing.rooms);
+
   if (document.getElementById("klein-copilot-root")) return;
 
   const settings = await getSettings();
@@ -81,7 +89,12 @@ export async function injectPanel({ listing }) {
       <div><strong>Zimmer:</strong> ${formatRooms(listing.rooms)}</div>
       <div><strong>€/m² kalt:</strong> ${listing.price_cold && listing.sqm ? (listing.price_cold / listing.sqm).toFixed(2) + " €/m²" : "–"}</div>
       <div><strong>€/m² warm:</strong> ${listing.price_warm && listing.sqm ? (listing.price_warm / listing.sqm).toFixed(2) + " €/m²" : "–"}</div>
-      <div><strong>€/Zimmer warm:</strong> ${listing.price_warm && listing.rooms ? (listing.price_warm / listing.rooms).toFixed(2) + " €/Zimmer" : "–"}</div>
+      <div><strong>€/Zimmer warm:</strong> ${(() => {
+        if (!listing.price_warm || !listing.rooms) return "–";
+        const costPerRoom = listing.price_warm / listing.rooms;
+        console.log("[UI] Cost per room calculation:", listing.price_warm, "/", listing.rooms, "=", costPerRoom);
+        return costPerRoom.toFixed(2) + " €/Zimmer";
+      })()}</div>
     </div>
     <button id="klein-generate-btn" style="
       padding:6px 10px;

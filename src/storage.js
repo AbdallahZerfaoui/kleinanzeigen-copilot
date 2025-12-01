@@ -1,3 +1,5 @@
+import { CONFIG } from "./config.js";
+
 const DEFAULT_PROFILE = `
 Ich bin Abdallah, Softwareentwickler in Heilbronn.
 Nichtraucher, keine Haustiere, ruhiger Mieter.
@@ -6,7 +8,7 @@ Stabile Einkünfte, Interesse an längerfristigem Mietverhältnis.
 
 const DEFAULT_SETTINGS = {
   language: "de",
-  model: "x-ai/grok-4.1-fast"
+  model: CONFIG.MODEL_MESSAGE
 };
 
 const SETTINGS_KEY = "settings";

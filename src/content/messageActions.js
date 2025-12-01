@@ -2,6 +2,7 @@ import { getSettings } from "../storage.js";
 import { buildPrompt } from "../prompts/index.js";
 import { buildAnalysisUserPrompt, ANALYST_SYSTEM_PROMPT } from "../prompts/analyze.js";
 import { generateWithOpenRouter } from "../openrouterClient.js";
+import { CONFIG } from "../config.js";
 
 const DEFAULT_GOAL = "single";
 
@@ -39,7 +40,7 @@ const buildTemplateMessage = ({ listing, profile, language, goalType }) => {
 export async function generateMessage({ listing, goalType = DEFAULT_GOAL, language = "de" }) {
   const settings = await getSettings();
   const profile = settings.profileText;
-  const model = settings.model || "openrouter/auto";
+  const model = settings.model || CONFIG.MODEL_MESSAGE;
 
   const prompt = buildPrompt({
     listing,
@@ -65,8 +66,7 @@ export async function generateMessage({ listing, goalType = DEFAULT_GOAL, langua
 }
 
 export async function analyzeListing({ listing }) {
-  const settings = await getSettings();
-  const model = settings.model || "openrouter/auto";
+  const model = CONFIG.MODEL_AUDIT;
 
   const prompt = {
     system: ANALYST_SYSTEM_PROMPT,

@@ -3,7 +3,8 @@ import { DEFAULT_PROFILE } from "./defaultProfile.js";
 
 const DEFAULT_SETTINGS = {
   language: "de",
-  model: CONFIG.MODEL_MESSAGE
+  model: CONFIG.MODEL_MESSAGE,
+  autoRunAudit: true
 };
 
 const SETTINGS_KEY = "settings";
@@ -42,7 +43,8 @@ export async function getSettings() {
     profileText: stored.profileText || DEFAULT_PROFILE,
     openRouterApiKey: envApiKey || stored.openRouterApiKey || "",
     model: settings.model || DEFAULT_SETTINGS.model,
-    language: settings.language || DEFAULT_SETTINGS.language
+    language: settings.language || DEFAULT_SETTINGS.language,
+    autoRunAudit: settings.autoRunAudit !== undefined ? settings.autoRunAudit : DEFAULT_SETTINGS.autoRunAudit
   };
 }
 

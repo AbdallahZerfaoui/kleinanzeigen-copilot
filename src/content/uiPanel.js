@@ -398,6 +398,12 @@ export async function injectPanel({ listing }) {
         </div>
       </div>
 
+      <!-- Auto-Run Checkbox -->
+      <div style="margin-bottom: 16px; display: flex; align-items: center; gap: 8px; padding: 0 4px;">
+        <input type="checkbox" id="kc-auto-run-audit" style="cursor: pointer;">
+        <label for="kc-auto-run-audit" style="font-size: 13px; color: #5f6368; cursor: pointer;">Auto-run Audit</label>
+      </div>
+
       <!-- Property Summary Card -->
       <div class="kc-summary-card">
         <div class="kc-summary-grid">
@@ -497,7 +503,8 @@ export async function injectPanel({ listing }) {
     messageContent: document.getElementById("kc-message-content"),
 
     langSelect: document.getElementById("kc-language-select"),
-    closeBtn: document.getElementById("kc-close-btn")
+    closeBtn: document.getElementById("kc-close-btn"),
+    autoRunCheckbox: document.getElementById("kc-auto-run-audit")
   };
 
   function classifyAvgRoomSize(avg) {
@@ -508,6 +515,22 @@ export async function injectPanel({ listing }) {
     if (avg > 14) return "small";
     return "cramped";
   }
+
+  // Initialize Settings & Auto-Run
+  getSettings().then(settings => {
+    if (els.autoRunCheckbox) {
+      els.autoRunCheckbox.checked = settings.autoRunAudit;
+      
+      els.autoRunCheckbox.addEventListener("change", async (e) => {
+        await setSettings({ autoRunAudit: e.target.checked });
+      });
+
+      if (settings.autoRunAudit) {
+        // Trigger audit automatically
+        els.btnAudit.click();
+      }
+    }
+  });
 
   // Tab Switching Logic
   function showAuditTab() {

@@ -21,7 +21,8 @@
         "src/prompts/*.js",
         "src/storage.js",
         "src/openrouterClient.js",
-        "src/config.js"
+        "src/config.js",
+        "src/defaultProfile.js"
       ],
       "matches": ["<all_urls>"]
     }

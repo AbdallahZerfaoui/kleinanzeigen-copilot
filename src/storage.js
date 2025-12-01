@@ -1,10 +1,5 @@
 import { CONFIG } from "./config.js";
-
-const DEFAULT_PROFILE = `
-Ich bin Abdallah, Softwareentwickler in Heilbronn.
-Nichtraucher, keine Haustiere, ruhiger Mieter.
-Stabile Einkünfte, Interesse an längerfristigem Mietverhältnis.
-`.trim();
+import { DEFAULT_PROFILE } from "./defaultProfile.js";
 
 const DEFAULT_SETTINGS = {
   language: "de",

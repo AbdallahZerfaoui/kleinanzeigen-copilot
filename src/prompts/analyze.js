@@ -48,15 +48,7 @@ You MUST classify each dimension using ONLY the allowed options:
 6. landlord_transparency
 "clear", "average", "unclear", "suspicious"
 
-7. deposit_assessment
-Object with:
-- status: "ok", "borderline", "red_flag", "unknown"
-- months_cold_rent: number or null
-- has_upfront_payment: boolean
-- upfront_payment_notes: string
-- reason: string
-
-8. landlord_difficulty
+7. landlord_difficulty
 Object with:
 - score: number (1-5)
 - label: "easy", "rather_easy", "neutral", "high_maintenance", "nightmare"
@@ -106,13 +98,6 @@ Return ONLY this exact JSON structure:
     "registration_status": "",
     "description_quality": "",
     "landlord_transparency": "",
-    "deposit_assessment": {
-      "status": "unknown",
-      "months_cold_rent": null,
-      "has_upfront_payment": false,
-      "upfront_payment_notes": "",
-      "reason": ""
-    },
     "landlord_difficulty": {
       "score": 3,
       "label": "neutral",

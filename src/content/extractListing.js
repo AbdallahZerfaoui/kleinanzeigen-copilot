@@ -173,6 +173,7 @@ export function extractListing() {
   let priceWarm = null;
   let extraCosts = null;
   let heatingCosts = null;
+  let deposit = null;
   let sqm = null;
   let rooms = null;
   const detailItems = Array.from(
@@ -196,6 +197,8 @@ export function extractListing() {
       extraCosts = parseEuro(valueText);
     } else if (!heatingCosts && (/heizkosten|heating\s*costs/.test(labelText))) {
       heatingCosts = parseEuro(valueText);
+    } else if (!deposit && (/kaution|deposit/.test(labelText))) {
+      deposit = parseEuro(valueText);
     }
 
     if (!sqm && /wohnfl|living\s*space|fläche/.test(labelText)) {
@@ -266,6 +269,7 @@ export function extractListing() {
     description,
     price_cold: priceCold || 0,
     price_warm: priceWarm || priceCold || 0,
+    deposit: deposit || null,
     sqm,
     rooms: rooms !== null ? parseFloat(rooms) : null, // Ensure rooms is always a float
     location,

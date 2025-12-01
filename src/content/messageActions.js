@@ -80,13 +80,57 @@ export async function analyzeListing({ listing, language = "de" }) {
       prompt
     });
     
+    let result;
     // Parse JSON response
     // The LLM might return markdown code blocks, so we need to clean it
     const jsonMatch = response.match(/\{[\s\S]*\}/);
     if (jsonMatch) {
-      return JSON.parse(jsonMatch[0]);
+      result = JSON.parse(jsonMatch[0]);
+    } else {
+      result = JSON.parse(response);
     }
-    return JSON.parse(response);
+
+    // Deterministic Deposit Assessment
+    const deposit = listing.deposit;
+    const coldRent = listing.price_cold;
+    let depositStatus = "unknown";
+    let months = null;
+    let reason = "";
+
+    if (deposit && coldRent > 0) {
+      months = deposit / coldRent;
+      // Allow small floating point margin
+      if (months <= 2.05) {
+        depositStatus = "ok";
+        reason = language === "en" 
+          ? `Deposit is ${months.toFixed(1)} months cold rent (≤ 2 is standard).`
+          : `Kaution beträgt ${months.toFixed(1)} Monatskaltmieten (≤ 2 ist üblich).`;
+      } else if (months <= 3.05) {
+        depositStatus = "borderline";
+        reason = language === "en"
+          ? `Deposit is ${months.toFixed(1)} months cold rent (3 is legal max).`
+          : `Kaution beträgt ${months.toFixed(1)} Monatskaltmieten (3 ist gesetzl. Maximum).`;
+      } else {
+        depositStatus = "red_flag";
+        reason = language === "en"
+          ? `Deposit is ${months.toFixed(1)} months cold rent (> 3 is illegal).`
+          : `Kaution beträgt ${months.toFixed(1)} Monatskaltmieten (> 3 ist illegal).`;
+      }
+    } else {
+        reason = language === "en" ? "Deposit amount not found in listing details." : "Kautionshöhe nicht in den Details gefunden.";
+    }
+
+    // Inject into result
+    if (!result.dimensions) result.dimensions = {};
+    result.dimensions.deposit_assessment = {
+      status: depositStatus,
+      months_cold_rent: months,
+      has_upfront_payment: false, 
+      upfront_payment_notes: "",
+      reason: reason
+    };
+
+    return result;
   } catch (error) {
     console.error("[Kleinanzeigen Copilot] Analysis failed", error);
     throw error;

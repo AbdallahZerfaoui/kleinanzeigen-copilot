@@ -71,8 +71,8 @@ function renderSummary(listing) {
   els.warm.textContent = listing.price_warm ? formatCurrency(listing.price_warm) : "–";
   els.location.textContent = listing.location ? listing.location : "–";
 
-  if (listing.price_cold && listing.sqm) {
-    const perSqm = (listing.price_cold / listing.sqm);
+  if (listing.price_warm && listing.sqm) {
+    const perSqm = (listing.price_warm / listing.sqm);
     els.sqmPrice.textContent = new Intl.NumberFormat('de-DE', { style: 'currency', currency: 'EUR' }).format(perSqm) + " / m²";
   } else {
     els.sqmPrice.textContent = "–";

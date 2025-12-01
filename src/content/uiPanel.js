@@ -277,7 +277,7 @@ export async function injectPanel({ listing }) {
             <span class="kc-summary-value" id="kc-val-warm">– €</span>
           </div>
           <div class="kc-summary-item">
-            <span class="kc-summary-label">€/m² (kalt)</span>
+            <span class="kc-summary-label">€/m² (warm)</span>
             <span class="kc-summary-value" id="kc-val-sqm-price">– €</span>
           </div>
           <div class="kc-summary-item">
@@ -330,8 +330,8 @@ export async function injectPanel({ listing }) {
     els.warm.textContent = l.price_warm ? formatCurrency(l.price_warm) : "–";
     els.location.textContent = l.location ? l.location : "–";
 
-    if (l.price_cold && l.sqm) {
-      const perSqm = (l.price_cold / l.sqm);
+    if (l.price_warm && l.sqm) {
+      const perSqm = (l.price_warm / l.sqm);
       els.sqmPrice.textContent = new Intl.NumberFormat('de-DE', { style: 'currency', currency: 'EUR' }).format(perSqm) + " / m²";
     } else {
       els.sqmPrice.textContent = "–";

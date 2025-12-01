@@ -323,6 +323,49 @@ export async function injectPanel({ listing }) {
         padding-top: 12px;
         border-top: 1px solid #ddd;
       }
+
+      /* Tab Bar Styles */
+      .kc-tab-bar {
+        display: flex;
+        gap: 8px;
+        margin-bottom: 16px;
+        border-bottom: 1px solid #ddd;
+      }
+
+      .kc-tab {
+        padding: 8px 16px;
+        background: transparent;
+        border: none;
+        border-bottom: 2px solid transparent;
+        font-size: 14px;
+        font-weight: 500;
+        color: #5f6368;
+        cursor: pointer;
+        transition: all 0.2s ease;
+      }
+
+      .kc-tab:hover {
+        color: #333;
+        background-color: #f7f7f7;
+        border-radius: 4px 4px 0 0;
+      }
+
+      .kc-tab.active {
+        color: #3b82f6;
+        border-bottom-color: #3b82f6;
+        font-weight: 600;
+      }
+
+      .kc-content-container {
+        min-height: 110px;
+        border: 1px dashed #ddd;
+        border-radius: 8px;
+        background-color: #fafafa;
+        margin-bottom: 16px;
+        padding: 16px;
+        color: #5f6368;
+        font-size: 13px;
+      }
     </style>
   `;
 
@@ -399,9 +442,18 @@ export async function injectPanel({ listing }) {
         <button id="kc-btn-generate" class="kc-btn kc-btn-secondary">Generate Message</button>
       </div>
 
-      <!-- Output Container -->
-      <div id="kc-output-container">
+      <!-- Tab Bar -->
+      <div class="kc-tab-bar">
+        <button id="kc-tab-audit" class="kc-tab active">Audit</button>
+        <button id="kc-tab-message" class="kc-tab">Message</button>
+      </div>
+
+      <!-- Output Containers -->
+      <div id="kc-audit-content" class="kc-content-container">
         Audit results will appear here.
+      </div>
+      <div id="kc-message-content" class="kc-content-container" style="display: none;">
+        Message results will appear here.
       </div>
 
       <!-- Footer -->
@@ -438,7 +490,12 @@ export async function injectPanel({ listing }) {
 
     btnAudit: document.getElementById("kc-btn-audit"),
     btnGenerate: document.getElementById("kc-btn-generate"),
-    output: document.getElementById("kc-output-container"),
+    
+    tabAudit: document.getElementById("kc-tab-audit"),
+    tabMessage: document.getElementById("kc-tab-message"),
+    auditContent: document.getElementById("kc-audit-content"),
+    messageContent: document.getElementById("kc-message-content"),
+
     langSelect: document.getElementById("kc-language-select"),
     closeBtn: document.getElementById("kc-close-btn")
   };
@@ -450,6 +507,21 @@ export async function injectPanel({ listing }) {
     if (avg > 18) return "ok";
     if (avg > 14) return "small";
     return "cramped";
+  }
+
+  // Tab Switching Logic
+  function showAuditTab() {
+    els.auditContent.style.display = "block";
+    els.messageContent.style.display = "none";
+    els.tabAudit.classList.add("active");
+    els.tabMessage.classList.remove("active");
+  }
+
+  function showMessageTab() {
+    els.auditContent.style.display = "none";
+    els.messageContent.style.display = "block";
+    els.tabAudit.classList.remove("active");
+    els.tabMessage.classList.add("active");
   }
 
   // Render Summary
@@ -506,9 +578,12 @@ export async function injectPanel({ listing }) {
     els.lblRoomPrice.textContent = s.extra.roomPrice;
     els.btnAudit.textContent = s.audit;
     els.btnGenerate.textContent = s.generate;
-    if (els.output.textContent.trim() === UI_STRINGS.de.placeholder || els.output.textContent.trim() === UI_STRINGS.en.placeholder) {
-      els.output.textContent = s.placeholder;
+    
+    // Update placeholders if they contain default text
+    if (els.auditContent.textContent.trim() === UI_STRINGS.de.placeholder || els.auditContent.textContent.trim() === UI_STRINGS.en.placeholder || els.auditContent.textContent.trim() === "Audit results will appear here.") {
+      els.auditContent.textContent = s.placeholder;
     }
+    
     els.lblFooter.textContent = s.footer;
 
     // Re-render summary to update derived values with new language
@@ -525,9 +600,13 @@ export async function injectPanel({ listing }) {
     updateUILanguage(e.target.value);
   });
 
+  els.tabAudit.addEventListener("click", showAuditTab);
+  els.tabMessage.addEventListener("click", showMessageTab);
+
   els.btnAudit.addEventListener("click", async () => {
-    setLoading(true);
-    els.output.innerHTML = "";
+    showAuditTab();
+    setLoading(true, "audit");
+    els.auditContent.innerHTML = "";
     try {
       const lang = els.langSelect.value;
       const result = await analyzeListing({ listing, language: lang });
@@ -536,15 +615,16 @@ export async function injectPanel({ listing }) {
       console.error(err);
       const lang = els.langSelect.value;
       const s = UI_STRINGS[lang] || UI_STRINGS.de;
-      els.output.innerHTML = `<div style="color: red;">${s.errorAudit}${err.message}</div>`;
+      els.auditContent.innerHTML = `<div style="color: red;">${s.errorAudit}${err.message}</div>`;
     } finally {
-      setLoading(false);
+      setLoading(false, "audit");
     }
   });
 
   els.btnGenerate.addEventListener("click", async () => {
-    setLoading(true);
-    els.output.innerHTML = "";
+    showMessageTab();
+    setLoading(true, "message");
+    els.messageContent.innerHTML = "";
     try {
       const language = els.langSelect.value;
       const message = await generateMessage({ listing, language });
@@ -553,21 +633,26 @@ export async function injectPanel({ listing }) {
       console.error(err);
       const lang = els.langSelect.value;
       const s = UI_STRINGS[lang] || UI_STRINGS.de;
-      els.output.innerHTML = `<div style="color: red;">${s.errorGen}${err.message}</div>`;
+      els.messageContent.innerHTML = `<div style="color: red;">${s.errorGen}${err.message}</div>`;
     } finally {
-      setLoading(false);
+      setLoading(false, "message");
     }
   });
 
-  function setLoading(isLoading) {
+  function setLoading(isLoading, type) {
     const lang = els.langSelect.value;
     const s = UI_STRINGS[lang] || UI_STRINGS.de;
 
     if (isLoading) {
       els.btnAudit.disabled = true;
       els.btnGenerate.disabled = true;
-      els.btnAudit.textContent = s.analyzing;
-      els.output.innerHTML = `<div style="text-align: center;">${s.loading}</div>`;
+      
+      if (type === "audit") {
+        els.btnAudit.textContent = s.analyzing;
+        els.auditContent.innerHTML = `<div style="text-align: center;">${s.loading}</div>`;
+      } else if (type === "message") {
+        els.messageContent.innerHTML = `<div style="text-align: center;">${s.loading}</div>`;
+      }
     } else {
       els.btnAudit.disabled = false;
       els.btnGenerate.disabled = false;
@@ -682,15 +767,16 @@ export async function injectPanel({ listing }) {
       `;
     }
 
-    els.output.innerHTML = html;
-    els.output.style.display = "block";
-    els.output.style.alignItems = "start";
-    els.output.style.justifyContent = "start";
+    els.auditContent.innerHTML = html;
+    els.auditContent.style.display = "block";
+    // Ensure alignment styles are set if they were overwritten
+    els.auditContent.style.alignItems = "start";
+    els.auditContent.style.justifyContent = "start";
   }
 
   function renderMessageResult(message, lang) {
     const s = UI_STRINGS[lang] || UI_STRINGS.de;
-    els.output.innerHTML = `
+    els.messageContent.innerHTML = `
       <div style="width: 100%;">
         <h3 style="font-size: 14px; font-weight: 600; margin: 0 0 10px 0; color: #333;">${s.msgTitle}</h3>
         <textarea style="width: 100%; height: 150px; padding: 8px; border: 1px solid #ddd; border-radius: 6px; font-size: 12px; resize: vertical; font-family: inherit;">${message}</textarea>
@@ -705,8 +791,8 @@ export async function injectPanel({ listing }) {
       setTimeout(() => btn.textContent = s.copy, 2000);
     });
     
-    els.output.style.display = "block";
-    els.output.style.alignItems = "start";
-    els.output.style.justifyContent = "start";
+    els.messageContent.style.display = "block";
+    els.messageContent.style.alignItems = "start";
+    els.messageContent.style.justifyContent = "start";
   }
 }

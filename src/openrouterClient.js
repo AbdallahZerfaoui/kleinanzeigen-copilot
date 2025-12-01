@@ -42,7 +42,8 @@ export async function generateWithOpenRouter({ apiKey, model, prompt }) {
     body: JSON.stringify({
       model,
       messages,
-      temperature: 0.7
+      temperature: 0.7,
+      reasoning: {enabled: true},
     })
   });
 

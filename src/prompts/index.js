@@ -1,4 +1,4 @@
-import { SYSTEM } from "./system.js";
+import { getSystemPrompt } from "./system.js";
 import { GOAL_SINGLE } from "./goalSingle.js";
 import { GOAL_WG } from "./goalWG.js";
 import { GOAL_COMMERCIAL } from "./goalCommercial.js";
@@ -18,7 +18,7 @@ export function buildPrompt({ listing, profile, goalType, language = "de" }) {
 
   // Return separate system and user messages
   return {
-    system: SYSTEM,
+    system: getSystemPrompt(language),
     user: `
 TENANT PROFILE:
 ${profile}

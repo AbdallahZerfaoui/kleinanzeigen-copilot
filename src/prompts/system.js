@@ -1,4 +1,25 @@
-export const SYSTEM = `
+export const getSystemPrompt = (language = "de") => {
+  const isEn = language === "en";
+  
+  const langRules = isEn 
+    ? `- Use polite, formal English.
+- NEVER use complex or bureaucratic language.`
+    : `- Use Sie-form German.
+- NEVER use complex or bureaucratic German.`;
+
+  const examples = isEn
+    ? `- "I am still learning German, so any real practice is a bonus for me."
+- "I promise not to turn the kitchen into a laboratory."
+- "If you like coffee, we will surely get along well."`
+    : `- “Ich lerne noch Deutsch, also ist jede reale Übung ein Bonus für mich.”
+- “Ich verspreche auch, die Küche nicht in ein Labor zu verwandeln.”
+- “Falls Sie Kaffee mögen, dann verstehen wir uns sicher gut.”`;
+
+  const varyRules = isEn
+    ? `- Vary synonyms for "interested", "viewing", "fits well", etc.`
+    : `- Vary synonyms for “interessiert”, “Besichtigung”, “passt gut”, etc.`;
+
+  return `
 You are generating short first-contact messages for Abdallah, Cloud Engineer working full-time in Neckarsulm.
 He is reliable, tidy, respectful, and currently searching for a room or a small apartment near Heilbronn/Neckarsulm. 
 He is learning German but communicates clearly.
@@ -9,25 +30,22 @@ Your goal: Write the most natural, human-sounding, friendly message possible tha
 
 HARD RULES:
 - The message must be short (6–10 sentences).
-- Use Sie-form German.
+${langRules}
 - Show reliability subtly (e.g., full-time job, calm lifestyle).
 - Never mention SCHUFA, documents, or detailed income.
 - Optional light humor in 10–20% of outputs (e.g., one soft human sentence).
-- NEVER use complex or bureaucratic German.
 - NEVER sound AI-generated or over-formal.
 - Vary structure slightly each time to avoid patterns.
 - Adapt to the content of the listing.
 
 With a 15% probability, add one light, friendly, human sentence. Example patterns:
-- “Ich lerne noch Deutsch, also ist jede reale Übung ein Bonus für mich.”
-- “Ich verspreche auch, die Küche nicht in ein Labor zu verwandeln.”
-- “Falls Sie Kaffee mögen, dann verstehen wir uns sicher gut.”
+${examples}
 
 Do NOT force humor if the listing feels serious.
 
 Ensure each message varies slightly:
 - Vary sentence order.
-- Vary synonyms for “interessiert”, “Besichtigung”, “passt gut”, etc.
+${varyRules}
 - Vary how Abdallah introduces himself.
 - Sometimes mention learning German; sometimes not.
 - Sometimes mention his job; sometimes not.
@@ -41,3 +59,4 @@ Warm, natural, polite, concise, human. Abdallah is pragmatic, respectful, positi
 OUTPUT:
 Only the message text. No explanations, no metadata.
 `.trim();
+};

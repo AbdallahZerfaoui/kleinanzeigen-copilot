@@ -215,7 +215,7 @@
     <!-- 1. Header -->
     <header>
       <h1>Classifieds Copilot</h1>
-      <p class="subtitle">Wohnungsanalyse für Bewerbungen</p>
+      <p class="subtitle" id="lbl-subtitle">Wohnungsanalyse für Bewerbungen</p>
     </header>
 
     <!-- 2. Settings Row -->
@@ -239,27 +239,27 @@
     <div class="summary-card">
       <div class="summary-grid">
         <div class="summary-item">
-          <span class="summary-label">Fläche</span>
+          <span class="summary-label" id="lbl-area">Fläche</span>
           <span class="summary-value" id="val-area">– m²</span>
         </div>
         <div class="summary-item">
-          <span class="summary-label">Zimmer</span>
+          <span class="summary-label" id="lbl-rooms">Zimmer</span>
           <span class="summary-value" id="val-rooms">–</span>
         </div>
         <div class="summary-item">
-          <span class="summary-label">Kaltmiete</span>
+          <span class="summary-label" id="lbl-cold">Kaltmiete</span>
           <span class="summary-value" id="val-cold">– €</span>
         </div>
         <div class="summary-item">
-          <span class="summary-label">Warmmiete</span>
+          <span class="summary-label" id="lbl-warm">Warmmiete</span>
           <span class="summary-value" id="val-warm">– €</span>
         </div>
         <div class="summary-item">
-          <span class="summary-label">€/m² (warm)</span>
+          <span class="summary-label" id="lbl-sqm">€/m² (warm)</span>
           <span class="summary-value" id="val-sqm-price">– €</span>
         </div>
         <div class="summary-item">
-          <span class="summary-label">Ort</span>
+          <span class="summary-label" id="lbl-location">Ort</span>
           <span class="summary-value" id="val-location">–</span>
         </div>
       </div>
@@ -273,11 +273,11 @@
 
     <!-- 5. Output Container -->
     <div id="output-container">
-      Audit results will appear here.
+      <span id="output-placeholder">Audit results will appear here.</span>
     </div>
 
     <!-- 6. Footer -->
-    <footer>
+    <footer id="lbl-footer">
       Miet-Audit • Beta
     </footer>
   </div>

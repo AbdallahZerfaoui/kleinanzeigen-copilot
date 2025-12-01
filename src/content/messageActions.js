@@ -65,12 +65,12 @@ export async function generateMessage({ listing, goalType = DEFAULT_GOAL, langua
   }
 }
 
-export async function analyzeListing({ listing }) {
+export async function analyzeListing({ listing, language = "de" }) {
   const model = CONFIG.MODEL_AUDIT;
 
   const prompt = {
     system: ANALYST_SYSTEM_PROMPT,
-    user: buildAnalysisUserPrompt(listing)
+    user: buildAnalysisUserPrompt(listing, language)
   };
 
   try {

@@ -48,6 +48,21 @@ You MUST classify each dimension using ONLY the allowed options:
 6. landlord_transparency
 "clear", "average", "unclear", "suspicious"
 
+7. deposit_assessment
+Object with:
+- status: "ok", "borderline", "red_flag", "unknown"
+- months_cold_rent: number or null
+- has_upfront_payment: boolean
+- upfront_payment_notes: string
+- reason: string
+
+8. landlord_difficulty
+Object with:
+- score: number (1-5)
+- label: "easy", "rather_easy", "neutral", "high_maintenance", "nightmare"
+- signals: string[]
+- summary: string
+
 FLAG RULES
 Produce flags ONLY if clear evidence exists.
 
@@ -90,7 +105,20 @@ Return ONLY this exact JSON structure:
     "contract_type": "",
     "registration_status": "",
     "description_quality": "",
-    "landlord_transparency": ""
+    "landlord_transparency": "",
+    "deposit_assessment": {
+      "status": "unknown",
+      "months_cold_rent": null,
+      "has_upfront_payment": false,
+      "upfront_payment_notes": "",
+      "reason": ""
+    },
+    "landlord_difficulty": {
+      "score": 3,
+      "label": "neutral",
+      "signals": [],
+      "summary": ""
+    }
   },
   "red_flags": [],
   "yellow_flags": [],
@@ -102,9 +130,15 @@ Return ONLY this exact JSON structure:
   }
 }`;
 
-export function buildAnalysisUserPrompt(listing) {
+export function buildAnalysisUserPrompt(listing, language = "de") {
+  const langInstruction = language === "en" 
+    ? "IMPORTANT: All text values (reasons, evidence, questions, explanation) MUST be in English."
+    : "WICHTIG: Alle Textwerte (Begründungen, Beweise, Fragen, Erklärung) MÜSSEN auf Deutsch sein.";
+
   return `Analyze the following rental listing and classify it according to the rules above.
 Fill every dimension, even if the listing does not mention the information.
+
+${langInstruction}
 
 Listing:
 

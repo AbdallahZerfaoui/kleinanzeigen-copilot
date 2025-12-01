@@ -1,6 +1,76 @@
 import { generateMessage, analyzeListing } from "./messageActions.js";
 import { getSettings, setSettings } from "../storage.js";
 
+// UI Strings
+const UI_STRINGS = {
+  de: {
+    subtitle: "Wohnungsanalyse für Bewerbungen",
+    area: "Fläche",
+    rooms: "Zimmer",
+    cold: "Kaltmiete",
+    warm: "Warmmiete",
+    sqm: "€/m² (warm)",
+    location: "Ort",
+    audit: "Run Audit",
+    generate: "Generate Message",
+    placeholder: "Audit-Ergebnisse erscheinen hier.",
+    footer: "Miet-Audit • Beta",
+    riskTitle: "Risiko-Analyse",
+    questionsTitle: "Fragen an den Vermieter",
+    verdictPrefix: "Fazit: ",
+    copy: "In die Zwischenablage kopieren",
+    copied: "Kopiert!",
+    analyzing: "Analysiere...",
+    loading: "Lade Daten...",
+    errorAudit: "Fehler bei der Analyse: ",
+    errorGen: "Fehler bei der Generierung: ",
+    msgTitle: "Generierte Nachricht",
+    dimensions: {
+      photos: "Fotos",
+      price_fairness: "Preis",
+      contract_type: "Vertrag",
+      registration_status: "Anmeldung",
+      description_quality: "Beschreibung",
+      landlord_transparency: "Vermieter",
+      deposit_assessment: "Kaution & Vorauszahlung",
+      landlord_difficulty: "Vermieter-Faktor"
+    }
+  },
+  en: {
+    subtitle: "Apartment analysis for applications",
+    area: "Area",
+    rooms: "Rooms",
+    cold: "Cold Rent",
+    warm: "Warm Rent",
+    sqm: "€/m² (warm)",
+    location: "Location",
+    audit: "Run Audit",
+    generate: "Generate Message",
+    placeholder: "Audit results will appear here.",
+    footer: "Rent Audit • Beta",
+    riskTitle: "Risk Analysis",
+    questionsTitle: "Questions for the Landlord",
+    verdictPrefix: "Verdict: ",
+    copy: "Copy to clipboard",
+    copied: "Copied!",
+    analyzing: "Analyzing...",
+    loading: "Loading data...",
+    errorAudit: "Analysis error: ",
+    errorGen: "Generation error: ",
+    msgTitle: "Generated Message",
+    dimensions: {
+      photos: "Photos",
+      price_fairness: "Price",
+      contract_type: "Contract",
+      registration_status: "Registration",
+      description_quality: "Description",
+      landlord_transparency: "Landlord",
+      deposit_assessment: "Deposit & Upfront",
+      landlord_difficulty: "Landlord Difficulty"
+    }
+  }
+};
+
 // Formatters
 const formatCurrency = (val) => {
   if (val === null || val === undefined) return "–";
@@ -235,7 +305,7 @@ export async function injectPanel({ listing }) {
       <div class="kc-header">
         <div>
           <h1 class="kc-h1">Classifieds Copilot</h1>
-          <p class="kc-subtitle">Wohnungsanalyse für Bewerbungen</p>
+          <p class="kc-subtitle" id="kc-lbl-subtitle">Wohnungsanalyse für Bewerbungen</p>
         </div>
         <button id="kc-close-btn" class="kc-close-btn">&times;</button>
       </div>
@@ -261,27 +331,27 @@ export async function injectPanel({ listing }) {
       <div class="kc-summary-card">
         <div class="kc-summary-grid">
           <div class="kc-summary-item">
-            <span class="kc-summary-label">Fläche</span>
+            <span class="kc-summary-label" id="kc-lbl-area">Fläche</span>
             <span class="kc-summary-value" id="kc-val-area">– m²</span>
           </div>
           <div class="kc-summary-item">
-            <span class="kc-summary-label">Zimmer</span>
+            <span class="kc-summary-label" id="kc-lbl-rooms">Zimmer</span>
             <span class="kc-summary-value" id="kc-val-rooms">–</span>
           </div>
           <div class="kc-summary-item">
-            <span class="kc-summary-label">Kaltmiete</span>
+            <span class="kc-summary-label" id="kc-lbl-cold">Kaltmiete</span>
             <span class="kc-summary-value" id="kc-val-cold">– €</span>
           </div>
           <div class="kc-summary-item">
-            <span class="kc-summary-label">Warmmiete</span>
+            <span class="kc-summary-label" id="kc-lbl-warm">Warmmiete</span>
             <span class="kc-summary-value" id="kc-val-warm">– €</span>
           </div>
           <div class="kc-summary-item">
-            <span class="kc-summary-label">€/m² (warm)</span>
+            <span class="kc-summary-label" id="kc-lbl-sqm">€/m² (warm)</span>
             <span class="kc-summary-value" id="kc-val-sqm-price">– €</span>
           </div>
           <div class="kc-summary-item">
-            <span class="kc-summary-label">Ort</span>
+            <span class="kc-summary-label" id="kc-lbl-location">Ort</span>
             <span class="kc-summary-value" id="kc-val-location">–</span>
           </div>
         </div>
@@ -299,7 +369,7 @@ export async function injectPanel({ listing }) {
       </div>
 
       <!-- Footer -->
-      <div class="kc-footer">
+      <div class="kc-footer" id="kc-lbl-footer">
         Miet-Audit • Beta
       </div>
     </div>
@@ -309,6 +379,15 @@ export async function injectPanel({ listing }) {
 
   // Elements
   const els = {
+    subtitle: document.getElementById("kc-lbl-subtitle"),
+    lblArea: document.getElementById("kc-lbl-area"),
+    lblRooms: document.getElementById("kc-lbl-rooms"),
+    lblCold: document.getElementById("kc-lbl-cold"),
+    lblWarm: document.getElementById("kc-lbl-warm"),
+    lblSqm: document.getElementById("kc-lbl-sqm"),
+    lblLocation: document.getElementById("kc-lbl-location"),
+    lblFooter: document.getElementById("kc-lbl-footer"),
+    
     area: document.getElementById("kc-val-area"),
     rooms: document.getElementById("kc-val-rooms"),
     cold: document.getElementById("kc-val-cold"),
@@ -340,18 +419,47 @@ export async function injectPanel({ listing }) {
 
   renderSummary(listing);
 
+  // Language Handling
+  function updateUILanguage(lang) {
+    const s = UI_STRINGS[lang] || UI_STRINGS.de;
+    
+    els.subtitle.textContent = s.subtitle;
+    els.lblArea.textContent = s.area;
+    els.lblRooms.textContent = s.rooms;
+    els.lblCold.textContent = s.cold;
+    els.lblWarm.textContent = s.warm;
+    els.lblSqm.textContent = s.sqm;
+    els.lblLocation.textContent = s.location;
+    els.btnAudit.textContent = s.audit;
+    els.btnGenerate.textContent = s.generate;
+    if (els.output.textContent.trim() === UI_STRINGS.de.placeholder || els.output.textContent.trim() === UI_STRINGS.en.placeholder) {
+      els.output.textContent = s.placeholder;
+    }
+    els.lblFooter.textContent = s.footer;
+  }
+
+  // Initialize Language
+  updateUILanguage(els.langSelect.value);
+
   // Event Listeners
   els.closeBtn.addEventListener("click", () => panel.remove());
+  
+  els.langSelect.addEventListener("change", (e) => {
+    updateUILanguage(e.target.value);
+  });
 
   els.btnAudit.addEventListener("click", async () => {
     setLoading(true);
     els.output.innerHTML = "";
     try {
-      const result = await analyzeListing({ listing });
-      renderAuditResult(result);
+      const lang = els.langSelect.value;
+      const result = await analyzeListing({ listing, language: lang });
+      renderAuditResult(result, lang);
     } catch (err) {
       console.error(err);
-      els.output.innerHTML = `<div style="color: red;">Fehler bei der Analyse: ${err.message}</div>`;
+      const lang = els.langSelect.value;
+      const s = UI_STRINGS[lang] || UI_STRINGS.de;
+      els.output.innerHTML = `<div style="color: red;">${s.errorAudit}${err.message}</div>`;
     } finally {
       setLoading(false);
     }
@@ -363,43 +471,51 @@ export async function injectPanel({ listing }) {
     try {
       const language = els.langSelect.value;
       const message = await generateMessage({ listing, language });
-      renderMessageResult(message);
+      renderMessageResult(message, language);
     } catch (err) {
       console.error(err);
-      els.output.innerHTML = `<div style="color: red;">Fehler bei der Generierung: ${err.message}</div>`;
+      const lang = els.langSelect.value;
+      const s = UI_STRINGS[lang] || UI_STRINGS.de;
+      els.output.innerHTML = `<div style="color: red;">${s.errorGen}${err.message}</div>`;
     } finally {
       setLoading(false);
     }
   });
 
   function setLoading(isLoading) {
+    const lang = els.langSelect.value;
+    const s = UI_STRINGS[lang] || UI_STRINGS.de;
+
     if (isLoading) {
       els.btnAudit.disabled = true;
       els.btnGenerate.disabled = true;
-      els.btnAudit.textContent = "Analysiere...";
-      els.output.innerHTML = '<div style="text-align: center;">Lade Daten...</div>';
+      els.btnAudit.textContent = s.analyzing;
+      els.output.innerHTML = `<div style="text-align: center;">${s.loading}</div>`;
     } else {
       els.btnAudit.disabled = false;
       els.btnGenerate.disabled = false;
-      els.btnAudit.textContent = "Run Audit";
+      els.btnAudit.textContent = s.audit;
     }
   }
 
-  function renderAuditResult(data) {
+  function renderAuditResult(data, lang) {
+    const s = UI_STRINGS[lang] || UI_STRINGS.de;
     let html = "";
 
     // 1. Risk Analysis (Dimensions)
     html += `<div style="margin-bottom: 16px;">
-      <h3 style="font-size: 14px; font-weight: 600; margin: 0 0 10px 0; border-bottom: 1px solid #eee; padding-bottom: 5px; color: #333;">Risiko-Analyse</h3>
+      <h3 style="font-size: 14px; font-weight: 600; margin: 0 0 10px 0; border-bottom: 1px solid #eee; padding-bottom: 5px; color: #333;">${s.riskTitle}</h3>
       <div style="display: grid; gap: 8px;">`;
 
     const dimensionMap = {
-      photos: { label: "Fotos", icon: "🖼️" },
-      price_fairness: { label: "Preis", icon: "💰" },
-      contract_type: { label: "Vertrag", icon: "📄" },
-      registration_status: { label: "Anmeldung", icon: "🏠" },
-      description_quality: { label: "Beschreibung", icon: "📝" },
-      landlord_transparency: { label: "Vermieter", icon: "👤" }
+      photos: { label: s.dimensions.photos, icon: "🖼️" },
+      price_fairness: { label: s.dimensions.price_fairness, icon: "💰" },
+      contract_type: { label: s.dimensions.contract_type, icon: "📄" },
+      registration_status: { label: s.dimensions.registration_status, icon: "🏠" },
+      description_quality: { label: s.dimensions.description_quality, icon: "📝" },
+      landlord_transparency: { label: s.dimensions.landlord_transparency, icon: "👤" },
+      deposit_assessment: { label: s.dimensions.deposit_assessment, icon: "💸" },
+      landlord_difficulty: { label: s.dimensions.landlord_difficulty, icon: "😤" }
     };
 
     const dimensions = data.dimensions || data;
@@ -408,9 +524,36 @@ export async function injectPanel({ listing }) {
       if (dimensionMap[key]) {
         const meta = dimensionMap[key];
         let statusColor = "#6b7280"; // grey
-        if (["missing", "suspicious", "high", "weird", "no_registration", "vague"].includes(value)) statusColor = "#ef4444"; // red
-        if (["unclear", "average", "limited"].includes(value)) statusColor = "#f59e0b"; // orange
-        if (["present", "fair", "long_term", "ok", "detailed", "clear"].includes(value)) statusColor = "#10b981"; // green
+        let displayValue = "";
+
+        if (key === 'deposit_assessment' && typeof value === 'object') {
+          // Handle Deposit Object
+          const status = value.status || "unknown";
+          displayValue = status.replace(/_/g, " ");
+          
+          if (status === 'ok') statusColor = "#10b981"; // green
+          else if (status === 'borderline') statusColor = "#f59e0b"; // orange
+          else if (status === 'red_flag') statusColor = "#ef4444"; // red
+          else statusColor = "#6b7280"; // grey
+
+        } else if (key === 'landlord_difficulty' && typeof value === 'object') {
+          // Handle Landlord Difficulty Object
+          const label = value.label || "unknown";
+          const score = value.score || 0;
+          displayValue = label.replace(/_/g, " ");
+          
+          if (score <= 2) statusColor = "#10b981"; // green
+          else if (score === 3) statusColor = "#6b7280"; // neutral grey
+          else if (score === 4) statusColor = "#f59e0b"; // orange
+          else if (score === 5) statusColor = "#ef4444"; // red
+
+        } else {
+          // Handle Standard String Values
+          displayValue = String(value).replace(/_/g, " ");
+          if (["missing", "suspicious", "high", "weird", "no_registration", "vague"].includes(value)) statusColor = "#ef4444"; // red
+          if (["unclear", "average", "limited"].includes(value)) statusColor = "#f59e0b"; // orange
+          if (["present", "fair", "long_term", "ok", "detailed", "clear"].includes(value)) statusColor = "#10b981"; // green
+        }
 
         html += `
           <div style="display: flex; align-items: center; justify-content: space-between; padding: 8px; background: white; border: 1px solid #eee; border-radius: 6px;">
@@ -419,7 +562,7 @@ export async function injectPanel({ listing }) {
               <span style="font-size: 13px; font-weight: 500; color: #333;">${meta.label}</span>
             </div>
             <span style="font-size: 12px; font-weight: 600; color: ${statusColor}; text-transform: capitalize;">
-              ${value.replace(/_/g, " ")}
+              ${displayValue}
             </span>
           </div>
         `;
@@ -430,7 +573,7 @@ export async function injectPanel({ listing }) {
     // 2. Questions
     if (data.clarification_questions && Array.isArray(data.clarification_questions) && data.clarification_questions.length > 0) {
       html += `<div style="margin-bottom: 16px;">
-        <h3 style="font-size: 14px; font-weight: 600; margin: 0 0 8px 0; border-bottom: 1px solid #eee; padding-bottom: 5px; color: #333;">Fragen an den Vermieter</h3>
+        <h3 style="font-size: 14px; font-weight: 600; margin: 0 0 8px 0; border-bottom: 1px solid #eee; padding-bottom: 5px; color: #333;">${s.questionsTitle}</h3>
         <ul style="padding-left: 20px; margin: 0; font-size: 13px; color: #374151;">
           ${data.clarification_questions.map(q => {
             const text = typeof q === 'string' ? q : q.question;
@@ -457,7 +600,7 @@ export async function injectPanel({ listing }) {
 
       html += `
         <div style="padding: 12px 16px; border-radius: 8px; font-weight: 600; text-align: center; margin-top: 20px; background-color: ${verdictBg}; color: ${verdictColor}; border: 1px solid ${verdictBorder};">
-          Fazit: ${data.summary.explanation || riskLevel}
+          ${s.verdictPrefix}${data.summary.explanation || riskLevel}
         </div>
       `;
     }
@@ -468,20 +611,21 @@ export async function injectPanel({ listing }) {
     els.output.style.justifyContent = "start";
   }
 
-  function renderMessageResult(message) {
+  function renderMessageResult(message, lang) {
+    const s = UI_STRINGS[lang] || UI_STRINGS.de;
     els.output.innerHTML = `
       <div style="width: 100%;">
-        <h3 style="font-size: 14px; font-weight: 600; margin: 0 0 10px 0; color: #333;">Generierte Nachricht</h3>
+        <h3 style="font-size: 14px; font-weight: 600; margin: 0 0 10px 0; color: #333;">${s.msgTitle}</h3>
         <textarea style="width: 100%; height: 150px; padding: 8px; border: 1px solid #ddd; border-radius: 6px; font-size: 12px; resize: vertical; font-family: inherit;">${message}</textarea>
-        <button id="kc-copy-btn" style="margin-top: 8px; width: 100%; padding: 8px; background: #eee; border: none; border-radius: 4px; cursor: pointer; font-size: 12px; font-weight: 600; color: #333;">In die Zwischenablage kopieren</button>
+        <button id="kc-copy-btn" style="margin-top: 8px; width: 100%; padding: 8px; background: #eee; border: none; border-radius: 4px; cursor: pointer; font-size: 12px; font-weight: 600; color: #333;">${s.copy}</button>
       </div>
     `;
     
     document.getElementById("kc-copy-btn").addEventListener("click", () => {
       navigator.clipboard.writeText(message);
       const btn = document.getElementById("kc-copy-btn");
-      btn.textContent = "Kopiert!";
-      setTimeout(() => btn.textContent = "In die Zwischenablage kopieren", 2000);
+      btn.textContent = s.copied;
+      setTimeout(() => btn.textContent = s.copy, 2000);
     });
     
     els.output.style.display = "block";

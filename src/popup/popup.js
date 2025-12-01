@@ -34,6 +34,20 @@ const UI_STRINGS = {
       landlord_transparency: "Vermieter",
       deposit_assessment: "Kaution & Vorauszahlung",
       landlord_difficulty: "Vermieter-Faktor"
+    },
+    roomSize: {
+      very_spacious: "Sehr großzügig",
+      good: "Gut",
+      ok: "OK",
+      small: "Klein",
+      cramped: "Sehr eng",
+      unknown: "Unbekannt"
+    },
+    extra: {
+      avgSize: "Ø Raumgröße",
+      roomPrice: "Preis pro Zimmer",
+      perRoom: "€ / Zimmer",
+      perRoomSuffix: "m² / Zimmer"
     }
   },
   en: {
@@ -67,6 +81,20 @@ const UI_STRINGS = {
       landlord_transparency: "Landlord",
       deposit_assessment: "Deposit & Upfront",
       landlord_difficulty: "Landlord Difficulty"
+    },
+    roomSize: {
+      very_spacious: "Very spacious",
+      good: "Good",
+      ok: "OK",
+      small: "Small",
+      cramped: "Cramped",
+      unknown: "Unknown"
+    },
+    extra: {
+      avgSize: "Approx. avg room size",
+      roomPrice: "Price per room",
+      perRoom: "€ / room",
+      perRoomSuffix: "m² / room"
     }
   }
 };
@@ -80,6 +108,8 @@ const els = {
   lblWarm: document.getElementById("lbl-warm"),
   lblSqm: document.getElementById("lbl-sqm"),
   lblLocation: document.getElementById("lbl-location"),
+  lblAvgSize: document.getElementById("lbl-avg-size"),
+  lblRoomPrice: document.getElementById("lbl-room-price"),
   lblFooter: document.getElementById("lbl-footer"),
   placeholder: document.getElementById("output-placeholder"),
   
@@ -89,6 +119,10 @@ const els = {
   warm: document.getElementById("val-warm"),
   sqmPrice: document.getElementById("val-sqm-price"),
   location: document.getElementById("val-location"),
+  
+  valAvgRoomSize: document.getElementById("val-avg-room-size"),
+  valRoomPrice: document.getElementById("val-room-price"),
+
   btnAudit: document.getElementById("btn-audit"),
   btnGenerate: document.getElementById("btn-generate"),
   output: document.getElementById("output-container"),
@@ -149,10 +183,17 @@ function updateUILanguage(lang) {
   els.lblWarm.textContent = s.warm;
   els.lblSqm.textContent = s.sqm;
   els.lblLocation.textContent = s.location;
+  els.lblAvgSize.textContent = s.extra.avgSize;
+  els.lblRoomPrice.textContent = s.extra.roomPrice;
   els.btnAudit.textContent = s.audit;
   els.btnGenerate.textContent = s.generate;
   if (els.placeholder) els.placeholder.textContent = s.placeholder;
   els.lblFooter.textContent = s.footer;
+
+  // Re-render summary to update derived values with new language
+  if (currentListing) {
+    renderSummary(currentListing);
+  }
 }
 
 // Formatters
@@ -166,6 +207,15 @@ const formatNumber = (val) => {
   return new Intl.NumberFormat('de-DE').format(val);
 };
 
+function classifyAvgRoomSize(avg) {
+  if (!avg || !Number.isFinite(avg)) return "unknown";
+  if (avg > 28) return "very_spacious";
+  if (avg > 22) return "good";
+  if (avg > 18) return "ok";
+  if (avg > 14) return "small";
+  return "cramped";
+}
+
 function renderSummary(listing) {
   els.area.textContent = listing.sqm ? `${formatNumber(listing.sqm)} m²` : "–";
   els.rooms.textContent = listing.rooms ? formatNumber(listing.rooms) : "–";
@@ -178,6 +228,27 @@ function renderSummary(listing) {
     els.sqmPrice.textContent = new Intl.NumberFormat('de-DE', { style: 'currency', currency: 'EUR' }).format(perSqm) + " / m²";
   } else {
     els.sqmPrice.textContent = "–";
+  }
+
+  // Derived Values
+  const lang = els.langSelect.value;
+  const s = UI_STRINGS[lang] || UI_STRINGS.de;
+
+  const avgRoomSize = (listing.sqm && listing.rooms && listing.rooms > 0) ? listing.sqm / listing.rooms : null;
+  const pricePerRoom = (listing.price_warm && listing.rooms && listing.rooms > 0) ? listing.price_warm / listing.rooms : null;
+
+  if (avgRoomSize) {
+    const labelKey = classifyAvgRoomSize(avgRoomSize);
+    const label = s.roomSize[labelKey];
+    els.valAvgRoomSize.textContent = `${formatNumber(avgRoomSize)} m² (${label})`;
+  } else {
+    els.valAvgRoomSize.textContent = "–";
+  }
+
+  if (pricePerRoom) {
+    els.valRoomPrice.textContent = `${Math.round(pricePerRoom)} €`;
+  } else {
+    els.valRoomPrice.textContent = "–";
   }
 }
 

@@ -34,6 +34,20 @@ const UI_STRINGS = {
       landlord_transparency: "Vermieter",
       deposit_assessment: "Kaution & Vorauszahlung",
       landlord_difficulty: "Vermieter-Faktor"
+    },
+    roomSize: {
+      very_spacious: "Sehr großzügig",
+      good: "Gut",
+      ok: "OK",
+      small: "Klein",
+      cramped: "Sehr eng",
+      unknown: "Unbekannt"
+    },
+    extra: {
+      avgSize: "Ø Raumgröße",
+      roomPrice: "Preis pro Zimmer",
+      perRoom: "€ / Zimmer",
+      perRoomSuffix: "m² / Zimmer"
     }
   },
   en: {
@@ -67,6 +81,20 @@ const UI_STRINGS = {
       landlord_transparency: "Landlord",
       deposit_assessment: "Deposit & Upfront",
       landlord_difficulty: "Landlord Difficulty"
+    },
+    roomSize: {
+      very_spacious: "Very spacious",
+      good: "Good",
+      ok: "OK",
+      small: "Small",
+      cramped: "Cramped",
+      unknown: "Unknown"
+    },
+    extra: {
+      avgSize: "Approx. avg room size",
+      roomPrice: "Price per room",
+      perRoom: "€ / room",
+      perRoomSuffix: "m² / room"
     }
   }
 };
@@ -354,6 +382,14 @@ export async function injectPanel({ listing }) {
             <span class="kc-summary-label" id="kc-lbl-location">Ort</span>
             <span class="kc-summary-value" id="kc-val-location">–</span>
           </div>
+          <div class="kc-summary-item">
+            <span class="kc-summary-label" id="kc-lbl-avg-size">Ø Raumgröße</span>
+            <span class="kc-summary-value" id="kc-val-avg-room-size">–</span>
+          </div>
+          <div class="kc-summary-item">
+            <span class="kc-summary-label" id="kc-lbl-room-price">Preis pro Zimmer</span>
+            <span class="kc-summary-value" id="kc-val-room-price">–</span>
+          </div>
         </div>
       </div>
 
@@ -386,6 +422,8 @@ export async function injectPanel({ listing }) {
     lblWarm: document.getElementById("kc-lbl-warm"),
     lblSqm: document.getElementById("kc-lbl-sqm"),
     lblLocation: document.getElementById("kc-lbl-location"),
+    lblAvgSize: document.getElementById("kc-lbl-avg-size"),
+    lblRoomPrice: document.getElementById("kc-lbl-room-price"),
     lblFooter: document.getElementById("kc-lbl-footer"),
     
     area: document.getElementById("kc-val-area"),
@@ -394,12 +432,25 @@ export async function injectPanel({ listing }) {
     warm: document.getElementById("kc-val-warm"),
     sqmPrice: document.getElementById("kc-val-sqm-price"),
     location: document.getElementById("kc-val-location"),
+    
+    valAvgRoomSize: document.getElementById("kc-val-avg-room-size"),
+    valRoomPrice: document.getElementById("kc-val-room-price"),
+
     btnAudit: document.getElementById("kc-btn-audit"),
     btnGenerate: document.getElementById("kc-btn-generate"),
     output: document.getElementById("kc-output-container"),
     langSelect: document.getElementById("kc-language-select"),
     closeBtn: document.getElementById("kc-close-btn")
   };
+
+  function classifyAvgRoomSize(avg) {
+    if (!avg || !Number.isFinite(avg)) return "unknown";
+    if (avg > 28) return "very_spacious";
+    if (avg > 22) return "good";
+    if (avg > 18) return "ok";
+    if (avg > 14) return "small";
+    return "cramped";
+  }
 
   // Render Summary
   const renderSummary = (l) => {
@@ -414,6 +465,27 @@ export async function injectPanel({ listing }) {
       els.sqmPrice.textContent = new Intl.NumberFormat('de-DE', { style: 'currency', currency: 'EUR' }).format(perSqm) + " / m²";
     } else {
       els.sqmPrice.textContent = "–";
+    }
+
+    // Derived Values
+    const lang = els.langSelect.value;
+    const s = UI_STRINGS[lang] || UI_STRINGS.de;
+
+    const avgRoomSize = (l.sqm && l.rooms && l.rooms > 0) ? l.sqm / l.rooms : null;
+    const pricePerRoom = (l.price_warm && l.rooms && l.rooms > 0) ? l.price_warm / l.rooms : null;
+
+    if (avgRoomSize) {
+      const labelKey = classifyAvgRoomSize(avgRoomSize);
+      const label = s.roomSize[labelKey];
+      els.valAvgRoomSize.textContent = `${formatNumber(avgRoomSize)} m² (${label})`;
+    } else {
+      els.valAvgRoomSize.textContent = "–";
+    }
+
+    if (pricePerRoom) {
+      els.valRoomPrice.textContent = `${Math.round(pricePerRoom)} €`;
+    } else {
+      els.valRoomPrice.textContent = "–";
     }
   };
 
@@ -430,12 +502,17 @@ export async function injectPanel({ listing }) {
     els.lblWarm.textContent = s.warm;
     els.lblSqm.textContent = s.sqm;
     els.lblLocation.textContent = s.location;
+    els.lblAvgSize.textContent = s.extra.avgSize;
+    els.lblRoomPrice.textContent = s.extra.roomPrice;
     els.btnAudit.textContent = s.audit;
     els.btnGenerate.textContent = s.generate;
     if (els.output.textContent.trim() === UI_STRINGS.de.placeholder || els.output.textContent.trim() === UI_STRINGS.en.placeholder) {
       els.output.textContent = s.placeholder;
     }
     els.lblFooter.textContent = s.footer;
+
+    // Re-render summary to update derived values with new language
+    renderSummary(listing);
   }
 
   // Initialize Language

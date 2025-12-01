@@ -37,7 +37,7 @@ const buildTemplateMessage = ({ listing, profile, language, goalType }) => {
   return lines.join("\n").trim();
 };
 
-export async function generateMessage({ listing, goalType = DEFAULT_GOAL, language = "de" }) {
+export async function generateMessage({ listing, goalType = DEFAULT_GOAL, language = "de", selectedQuestions = [] }) {
   const settings = await getSettings();
   const profile = settings.profileText;
   const model = settings.model || CONFIG.MODEL_MESSAGE;
@@ -46,7 +46,8 @@ export async function generateMessage({ listing, goalType = DEFAULT_GOAL, langua
     listing,
     profile,
     goalType,
-    language
+    language,
+    selectedQuestions
   });
 
   try {

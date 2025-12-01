@@ -626,6 +626,18 @@ export async function injectPanel({ listing }) {
   els.tabAudit.addEventListener("click", showAuditTab);
   els.tabMessage.addEventListener("click", showMessageTab);
 
+  function getSelectedQuestions() {
+    const checkboxes = document.querySelectorAll('.kc-question-checkbox');
+    const selected = [];
+    checkboxes.forEach((cb) => {
+      if (cb.checked) {
+        const q = cb.getAttribute('data-question');
+        if (q) selected.push(q);
+      }
+    });
+    return selected;
+  }
+
   els.btnAudit.addEventListener("click", async () => {
     showAuditTab();
     setLoading(true, "audit");
@@ -650,7 +662,8 @@ export async function injectPanel({ listing }) {
     els.messageContent.innerHTML = "";
     try {
       const language = els.langSelect.value;
-      const message = await generateMessage({ listing, language });
+      const selectedQuestions = getSelectedQuestions();
+      const message = await generateMessage({ listing, language, selectedQuestions });
       renderMessageResult(message, language);
     } catch (err) {
       console.error(err);
@@ -759,10 +772,24 @@ export async function injectPanel({ listing }) {
     if (data.clarification_questions && Array.isArray(data.clarification_questions) && data.clarification_questions.length > 0) {
       html += `<div style="margin-bottom: 16px;">
         <h3 style="font-size: 14px; font-weight: 600; margin: 0 0 8px 0; border-bottom: 1px solid #eee; padding-bottom: 5px; color: #333;">${s.questionsTitle}</h3>
-        <ul style="padding-left: 20px; margin: 0; font-size: 13px; color: #374151;">
-          ${data.clarification_questions.map(q => {
+        <ul id="kc-questions-list" style="padding-left: 0; margin: 0; list-style: none; font-size: 13px; color: #374151;">
+          ${data.clarification_questions.map((q, idx) => {
             const text = typeof q === 'string' ? q : q.question;
-            return `<li style="margin-bottom: 4px;">${text}</li>`;
+            // Escape quotes in text for attribute
+            const safeText = text.replace(/"/g, '&quot;');
+            return `
+              <li style="margin-bottom: 6px;">
+                <label style="display: flex; align-items: flex-start; gap: 8px; cursor: pointer;">
+                  <input 
+                    type="checkbox" 
+                    class="kc-question-checkbox" 
+                    data-question="${safeText}"
+                    style="margin-top: 3px;"
+                  />
+                  <span style="line-height: 1.4;">${text}</span>
+                </label>
+              </li>
+            `;
           }).join("")}
         </ul>
       </div>`;

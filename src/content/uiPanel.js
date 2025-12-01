@@ -1,4 +1,4 @@
-import { generateMessage } from "./messageActions.js";
+import { generateMessage, analyzeListing } from "./messageActions.js";
 import { getSettings, setSettings } from "../storage.js";
 
 const STRINGS = {
@@ -9,7 +9,13 @@ const STRINGS = {
     generate: "Nachricht generieren & kopieren",
     generating: "Wird generiert...",
     copied: "Nachricht wurde in die Zwischenablage kopiert.",
-    error: "Fehler beim Generieren. Bitte erneut versuchen."
+    error: "Fehler beim Generieren. Bitte erneut versuchen.",
+    analyze: "Anzeige prüfen (Smart Analyst)",
+    analyzing: "Prüfe...",
+    analysisTitle: "Analyse-Ergebnisse",
+    riskLow: "Geringes Risiko",
+    riskMedium: "Mittleres Risiko",
+    riskHigh: "Hohes Risiko"
   },
   en: {
     title: "Kleinanzeigen Copilot",
@@ -18,7 +24,13 @@ const STRINGS = {
     generate: "Generate & copy",
     generating: "Generating...",
     copied: "Message copied to clipboard.",
-    error: "Error while generating. Please try again."
+    error: "Error while generating. Please try again.",
+    analyze: "Analyze Listing (Smart Analyst)",
+    analyzing: "Analyzing...",
+    analysisTitle: "Analysis Results",
+    riskLow: "Low Risk",
+    riskMedium: "Medium Risk",
+    riskHigh: "High Risk"
   }
 };
 
@@ -107,6 +119,20 @@ export async function injectPanel({ listing }) {
         return costPerRoom.toFixed(2) + " €/Zimmer";
       })()}</div>
     </div>
+    <button id="klein-analyze-btn" style="
+      padding:6px 10px;
+      border-radius:6px;
+      border:1px solid #d1d5db;
+      background:#f3f4f6;
+      color:#374151;
+      cursor:pointer;
+      font-size:14px;
+      width:100%;
+      margin-bottom:8px;
+    ">
+      ${strings.analyze}
+    </button>
+    <div id="klein-analysis-results" style="display:none; margin-bottom:8px; padding:8px; background:#f9fafb; border-radius:6px; border:1px solid #e5e7eb; font-size:12px;"></div>
     <button id="klein-generate-btn" style="
       padding:6px 10px;
       border-radius:6px;
@@ -147,6 +173,8 @@ export async function injectPanel({ listing }) {
   const langSelect = document.getElementById("klein-lang-select");
   const goalSelect = document.getElementById("klein-goal-select");
   const generateBtn = document.getElementById("klein-generate-btn");
+  const analyzeBtn = document.getElementById("klein-analyze-btn");
+  const analysisResults = document.getElementById("klein-analysis-results");
   const statusEl = document.getElementById("klein-status");
 
   const refreshStrings = () => STRINGS[currentLanguage] || STRINGS[DEFAULT_LANGUAGE];
@@ -232,6 +260,90 @@ export async function injectPanel({ listing }) {
       const sDone = refreshStrings();
       generateBtn.disabled = false;
       generateBtn.textContent = sDone.generate;
+    }
+  });
+
+  analyzeBtn.addEventListener("click", async () => {
+    const s = refreshStrings();
+    analyzeBtn.disabled = true;
+    analyzeBtn.textContent = s.analyzing;
+    analysisResults.style.display = "none";
+    setStatus("");
+
+    try {
+      const result = await analyzeListing({ listing });
+      
+      // Render results
+      let html = `<div style="font-weight:bold; margin-bottom:4px;">${s.analysisTitle}</div>`;
+      
+      // Risk Level Badge
+      const riskColor = result.summary.risk_level === "high" ? "#ef4444" : 
+                        result.summary.risk_level === "medium" ? "#f59e0b" : "#10b981";
+      const riskLabel = result.summary.risk_level === "high" ? s.riskHigh :
+                        result.summary.risk_level === "medium" ? s.riskMedium : s.riskLow;
+      
+      html += `<div style="display:inline-block; padding:2px 6px; border-radius:4px; background:${riskColor}; color:white; font-size:11px; font-weight:bold; margin-bottom:6px;">${riskLabel}</div>`;
+      html += `<div style="margin-bottom:8px;">${result.summary.explanation}</div>`;
+
+      // Dimensions
+      if (result.dimensions) {
+        html += `<div style="margin-bottom:8px; padding:6px; background:#fff; border-radius:4px; border:1px solid #eee;">`;
+        html += `<div style="font-weight:bold; margin-bottom:4px; font-size:11px; color:#444;">DETAILS</div>`;
+        html += `<div style="display:grid; grid-template-columns: 1fr 1fr; gap:y-2px gap-x-4px; font-size:11px;">`;
+        
+        const dimLabels = {
+          photos: "Photos",
+          price_fairness: "Price",
+          contract_type: "Contract",
+          registration_status: "Anmeldung",
+          description_quality: "Desc.",
+          landlord_transparency: "Landlord"
+        };
+
+        for (const [key, value] of Object.entries(result.dimensions)) {
+           html += `<div><span style="color:#666;">${dimLabels[key] || key}:</span> <span style="font-weight:500;">${value}</span></div>`;
+        }
+        html += `</div></div>`;
+      }
+
+      // Flags
+      const renderFlags = (flags, color, icon) => {
+        if (!flags || flags.length === 0) return "";
+        return flags.map(f => `
+          <div style="margin-bottom:4px; padding-left:8px; border-left:2px solid ${color};">
+            <div style="font-weight:bold; color:${color};">${icon} ${f.type}</div>
+            <div>${f.reason}</div>
+            <div style="font-style:italic; color:#666; font-size:11px;">"${f.evidence}"</div>
+          </div>
+        `).join("");
+      };
+
+      html += renderFlags(result.red_flags, "#ef4444", "⚠️");
+      html += renderFlags(result.yellow_flags, "#f59e0b", "✋");
+      html += renderFlags(result.green_flags, "#10b981", "✅");
+
+      // Clarification Questions
+      if (result.clarification_questions && result.clarification_questions.length > 0) {
+        html += `<div style="margin-top:8px; padding-top:8px; border-top:1px solid #eee;">`;
+        html += `<div style="font-weight:bold; margin-bottom:4px; font-size:11px; color:#2563eb;">QUESTIONS TO ASK</div>`;
+        html += result.clarification_questions.map(q => `
+          <div style="margin-bottom:6px; padding-left:8px; border-left:2px solid #2563eb;">
+            <div style="font-weight:bold; color:#1e40af;">❓ ${q.question}</div>
+            <div style="font-size:11px; color:#555;">${q.reason}</div>
+          </div>
+        `).join("");
+        html += `</div>`;
+      }
+
+      analysisResults.innerHTML = html;
+      analysisResults.style.display = "block";
+
+    } catch (error) {
+      console.error("Analysis failed:", error);
+      setStatus(s.error, true);
+    } finally {
+      analyzeBtn.disabled = false;
+      analyzeBtn.textContent = s.analyze;
     }
   });
 }

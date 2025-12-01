@@ -1,5 +1,6 @@
 import { getSettings } from "../storage.js";
 import { buildPrompt } from "../prompts/index.js";
+import { buildAnalysisUserPrompt, ANALYST_SYSTEM_PROMPT } from "../prompts/analyze.js";
 import { generateWithOpenRouter } from "../openrouterClient.js";
 
 const DEFAULT_GOAL = "single";
@@ -60,5 +61,34 @@ export async function generateMessage({ listing, goalType = DEFAULT_GOAL, langua
     console.error("[Kleinanzeigen Copilot] OpenRouter failed, using template fallback", error);
     // Fallback to template only if API call fails
     return buildTemplateMessage({ listing, profile, language, goalType });
+  }
+}
+
+export async function analyzeListing({ listing }) {
+  const settings = await getSettings();
+  const model = settings.model || "openrouter/auto";
+
+  const prompt = {
+    system: ANALYST_SYSTEM_PROMPT,
+    user: buildAnalysisUserPrompt(listing)
+  };
+
+  try {
+    const response = await generateWithOpenRouter({
+      apiKey: null,
+      model,
+      prompt
+    });
+    
+    // Parse JSON response
+    // The LLM might return markdown code blocks, so we need to clean it
+    const jsonMatch = response.match(/\{[\s\S]*\}/);
+    if (jsonMatch) {
+      return JSON.parse(jsonMatch[0]);
+    }
+    return JSON.parse(response);
+  } catch (error) {
+    console.error("[Kleinanzeigen Copilot] Analysis failed", error);
+    throw error;
   }
 }

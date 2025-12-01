@@ -24,6 +24,7 @@ const DEFAULT_LANGUAGE = "de";
 
 const formatEuros = (value) => (value ? `${value} €` : "–");
 const formatSqm = (value) => (value ? `${value} m²` : "–");
+const formatRooms = (value) => (value ? `${value} Zimmer` : "–");
 
 export async function injectPanel({ listing }) {
   if (document.getElementById("klein-copilot-root")) return;
@@ -77,8 +78,10 @@ export async function injectPanel({ listing }) {
       <div><strong>kalt:</strong> ${formatEuros(listing.price_cold)}</div>
       <div><strong>warm:</strong> ${formatEuros(listing.price_warm)}</div>
       <div><strong>Fläche:</strong> ${formatSqm(listing.sqm)}</div>
+      <div><strong>Zimmer:</strong> ${formatRooms(listing.rooms)}</div>
       <div><strong>€/m² kalt:</strong> ${listing.price_cold && listing.sqm ? (listing.price_cold / listing.sqm).toFixed(2) + " €/m²" : "–"}</div>
       <div><strong>€/m² warm:</strong> ${listing.price_warm && listing.sqm ? (listing.price_warm / listing.sqm).toFixed(2) + " €/m²" : "–"}</div>
+      <div><strong>€/Zimmer warm:</strong> ${listing.price_warm && listing.rooms ? (listing.price_warm / listing.rooms).toFixed(2) + " €/Zimmer" : "–"}</div>
     </div>
     <button id="klein-generate-btn" style="
       padding:6px 10px;

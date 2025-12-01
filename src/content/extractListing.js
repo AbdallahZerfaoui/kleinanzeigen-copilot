@@ -15,6 +15,13 @@ const parseSqm = (text) => {
   return match ? parseInt(match[1], 10) : null;
 };
 
+const parseRooms = (text) => {
+  if (!text) return null;
+  // Match patterns like "2 Zimmer", "3 rooms", "2.5 Zimmer", etc.
+  const match = text.match(/(\d+(?:\.\d+)?)\s*(zimmer|rooms?|räume)/i);
+  return match ? parseFloat(match[1]) : null;
+};
+
 export function extractListing() {
   const titleEl =
     document.querySelector("h1") ||
@@ -35,6 +42,7 @@ export function extractListing() {
   let priceWarm = null;
   let extraCosts = null;
   let sqm = null;
+  let rooms = null;
   const detailItems = Array.from(
     document.querySelectorAll(".addetailslist--detail")
   );
@@ -59,6 +67,10 @@ export function extractListing() {
     if (!sqm && /wohnfl|living\s*space|fläche/.test(labelText)) {
       sqm = parseSqm(valueText);
     }
+
+    if (!rooms && /zimmer|rooms?|räume/.test(labelText)) {
+      rooms = parseRooms(valueText);
+    }
   });
 
   // Fallback price cold from main price element
@@ -74,6 +86,11 @@ export function extractListing() {
   // Fallback sqm from whole page
   if (sqm === null) {
     sqm = parseSqm(document.body.innerText || "");
+  }
+
+  // Fallback rooms from whole page
+  if (rooms === null) {
+    rooms = parseRooms(document.body.innerText || "");
   }
 
   // Derive warm price if possible
@@ -96,6 +113,7 @@ export function extractListing() {
     price_cold: priceCold || 0,
     price_warm: priceWarm || priceCold || 0,
     sqm,
+    rooms,
     location,
     features
   };

@@ -1,34 +1,287 @@
-<!doctype html>
-<html>
-  <head>
-    <meta charset="utf-8" />
-    <title>Kleinanzeigen Copilot</title>
-    <style>
-      body {
-        font-family: system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
-        font-size: 14px;
-        margin: 10px;
-        min-width: 220px;
-      }
-      label {
-        display: block;
-        margin-top: 8px;
-      }
-      textarea {
-        width: 100%;
-        min-height: 80px;
-      }
-    </style>
-  </head>
-  <body>
-    <div style="font-weight:bold; margin-bottom:6px;">Kleinanzeigen Copilot</div>
-    <div id="status" style="font-size:12px; color:#555; margin-bottom:4px;">
-      (v0) Profiltext lokal gespeichert.
-    </div>
-    <label for="profile">Profiltext:</label>
-    <textarea id="profile"></textarea>
-    <button id="save" style="margin-top:6px;">Speichern</button>
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Classifieds Copilot</title>
+  <style>
+    :root {
+      --surface: #ffffff;
+      --panel: #f7f7f7;
+      --border: #ddd;
+      --text-strong: #333;
+      --text-muted: #5f6368;
+      --primary: #3b82f6;
+      --primary-hover: #2563eb;
+      --radius: 8px;
+      --shadow: 0 10px 30px rgba(0, 0, 0, 0.04);
+      --space-sm: 12px;
+      --space-md: 16px;
+    }
 
-    <script src="popup.js" type="module"></script>
-  </body>
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      /* background-color: red !important; */
+      margin: 0;
+      padding: var(--space-md);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      background-color: var(--panel);
+      color: var(--text-strong);
+      font-size: 14px;
+      line-height: 1.5;
+      width: 500px;
+      max-width: 520px;
+      min-width: 480px;
+    }
+
+    .container {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      padding: var(--space-md);
+      margin: 0 auto;
+    }
+
+    header {
+      margin-bottom: var(--space-md);
+      border-bottom: 1px solid var(--border);
+      padding-bottom: var(--space-sm);
+    }
+
+    h1 {
+      margin: 0 0 4px 0;
+      font-size: 16px;
+      font-weight: 500;
+      color: var(--text-strong);
+    }
+
+    .subtitle {
+      margin: 0;
+      font-size: 13px;
+      color: var(--text-muted);
+    }
+
+    .settings-row {
+      display: flex;
+      gap: var(--space-sm);
+      margin-bottom: var(--space-md);
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: var(--space-sm);
+    }
+
+    .select-wrapper {
+      flex: 1;
+      position: relative;
+    }
+
+    select {
+      width: 100%;
+      padding: 8px 10px;
+      font-size: 13px;
+      font-weight: 600;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      background-color: var(--surface);
+      color: var(--text-strong);
+      appearance: none;
+      cursor: pointer;
+    }
+
+    .select-wrapper::after {
+      content: "▼";
+      font-size: 10px;
+      color: var(--text-muted);
+      position: absolute;
+      right: 10px;
+      top: 50%;
+      transform: translateY(-50%);
+      pointer-events: none;
+    }
+
+    .summary-card {
+      background-color: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: var(--space-md);
+      box-shadow: var(--shadow);
+      margin-bottom: var(--space-md);
+    }
+
+    .summary-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: var(--space-sm) 24px;
+    }
+
+    .summary-item {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      align-items: center;
+      font-size: 14px;
+    }
+
+    .summary-label {
+      color: var(--text-strong);
+      font-weight: 600;
+      font-size: 13px;
+    }
+
+    .summary-value {
+      font-weight: 600;
+      color: var(--text-strong);
+      text-align: right;
+    }
+
+    .action-card {
+      background-color: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: var(--space-md);
+      margin-bottom: var(--space-md);
+      display: flex;
+      flex-direction: column;
+      gap: var(--space-sm);
+    }
+
+    .btn {
+      width: 100%;
+      padding: 12px 14px;
+      border-radius: 8px;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.18s ease;
+      text-align: center;
+      border: none;
+    }
+
+    .btn-primary {
+      background-color: var(--primary);
+      color: white;
+      border: 1px solid var(--primary);
+      box-shadow: 0 6px 16px rgba(59, 130, 246, 0.18);
+    }
+
+    .btn-primary:hover {
+      background-color: var(--primary-hover);
+      border-color: var(--primary-hover);
+    }
+
+    .btn-secondary {
+      background-color: transparent;
+      color: var(--text-strong);
+      border: 1px solid var(--border);
+    }
+
+    .btn-secondary:hover {
+      background-color: var(--surface);
+      color: var(--text-strong);
+      border-color: #c9ced6;
+    }
+
+    #output-container {
+      min-height: 110px;
+      border: 1px dashed var(--border);
+      border-radius: var(--radius);
+      background-color: #fafafa;
+      margin-bottom: var(--space-md);
+      padding: var(--space-md);
+      color: var(--text-muted);
+      font-size: 13px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+    }
+
+    footer {
+      text-align: center;
+      font-size: 11px;
+      color: #8c8f94;
+      padding-top: var(--space-sm);
+      border-top: 1px solid var(--border);
+    }
+  </style>
+</head>
+<body>
+
+  <div class="container">
+    <!-- 1. Header -->
+    <header>
+      <h1>Classifieds Copilot</h1>
+      <p class="subtitle">Wohnungsanalyse für Bewerbungen</p>
+    </header>
+
+    <!-- 2. Settings Row -->
+    <div class="settings-row">
+      <div class="select-wrapper">
+        <select id="language-select">
+          <option value="de">Deutsch</option>
+          <option value="en">English</option>
+        </select>
+      </div>
+      <div class="select-wrapper">
+        <select id="profile-select">
+          <option value="default">Standard Profil</option>
+          <option value="student">Student</option>
+          <option value="couple">Paar</option>
+        </select>
+      </div>
+    </div>
+
+    <!-- 3. Property Summary Card -->
+    <div class="summary-card">
+      <div class="summary-grid">
+        <div class="summary-item">
+          <span class="summary-label">Fläche</span>
+          <span class="summary-value" id="val-area">– m²</span>
+        </div>
+        <div class="summary-item">
+          <span class="summary-label">Zimmer</span>
+          <span class="summary-value" id="val-rooms">–</span>
+        </div>
+        <div class="summary-item">
+          <span class="summary-label">Kaltmiete</span>
+          <span class="summary-value" id="val-cold">– €</span>
+        </div>
+        <div class="summary-item">
+          <span class="summary-label">Warmmiete</span>
+          <span class="summary-value" id="val-warm">– €</span>
+        </div>
+        <div class="summary-item">
+          <span class="summary-label">€/m² (kalt)</span>
+          <span class="summary-value" id="val-sqm-price">– €</span>
+        </div>
+        <div class="summary-item">
+          <span class="summary-label">Ort</span>
+          <span class="summary-value" id="val-location">–</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- 4. Primary Action Card -->
+    <div class="action-card">
+      <button id="btn-audit" class="btn btn-primary">Run Audit</button>
+      <button id="btn-generate" class="btn btn-secondary">Generate Message</button>
+    </div>
+
+    <!-- 5. Output Container -->
+    <div id="output-container">
+      Audit results will appear here.
+    </div>
+
+    <!-- 6. Footer -->
+    <footer>
+      Miet-Audit • Beta
+    </footer>
+  </div>
+
+  <script src="popup.js" type="module"></script>
+</body>
 </html>

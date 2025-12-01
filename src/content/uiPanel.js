@@ -1,349 +1,491 @@
 import { generateMessage, analyzeListing } from "./messageActions.js";
 import { getSettings, setSettings } from "../storage.js";
 
-const STRINGS = {
-  de: {
-    title: "Kleinanzeigen Copilot",
-    languageLabel: "Sprache:",
-    applicationTypeLabel: "Bewerbungsart:",
-    generate: "Nachricht generieren & kopieren",
-    generating: "Wird generiert...",
-    copied: "Nachricht wurde in die Zwischenablage kopiert.",
-    error: "Fehler beim Generieren. Bitte erneut versuchen.",
-    analyze: "Anzeige prüfen (Smart Analyst)",
-    analyzing: "Prüfe...",
-    analysisTitle: "Analyse-Ergebnisse",
-    riskLow: "Geringes Risiko",
-    riskMedium: "Mittleres Risiko",
-    riskHigh: "Hohes Risiko"
-  },
-  en: {
-    title: "Kleinanzeigen Copilot",
-    languageLabel: "Language:",
-    applicationTypeLabel: "Application type:",
-    generate: "Generate & copy",
-    generating: "Generating...",
-    copied: "Message copied to clipboard.",
-    error: "Error while generating. Please try again.",
-    analyze: "Analyze Listing (Smart Analyst)",
-    analyzing: "Analyzing...",
-    analysisTitle: "Analysis Results",
-    riskLow: "Low Risk",
-    riskMedium: "Medium Risk",
-    riskHigh: "High Risk"
-  }
+// Formatters
+const formatCurrency = (val) => {
+  if (val === null || val === undefined) return "–";
+  return new Intl.NumberFormat('de-DE', { style: 'currency', currency: 'EUR' }).format(val);
 };
 
-const DEFAULT_LANGUAGE = "de";
-
-const formatEuros = (value) => (value ? `${value} €` : "–");
-const formatSqm = (value) => (value ? `${value} m²` : "–");
-const formatRooms = (value) => {
-  if (value === null || value === undefined) return "–";
-  // Ensure we preserve decimal places
-  const numValue = typeof value === 'string' ? parseFloat(value) : value;
-  return `${numValue} Zimmer`;
+const formatNumber = (val) => {
+  if (val === null || val === undefined) return "–";
+  return new Intl.NumberFormat('de-DE').format(val);
 };
 
 export async function injectPanel({ listing }) {
-  console.log("[UI] injectPanel called with listing:", listing);
-  console.log("[UI] listing.rooms:", listing.rooms, "type:", typeof listing.rooms);
-
   if (document.getElementById("klein-copilot-root")) return;
-
-  const settings = await getSettings();
-  let currentLanguage = settings.language || DEFAULT_LANGUAGE;
-  let currentGoalType = "single"; // Default to single
-  const strings = STRINGS[currentLanguage] || STRINGS[DEFAULT_LANGUAGE];
 
   const panel = document.createElement("div");
   panel.id = "klein-copilot-root";
+  
+  // Shadow DOM would be better, but let's stick to simple injection for now with scoped styles
+  // We use a high z-index and fixed positioning
   Object.assign(panel.style, {
     position: "fixed",
-    top: "80px",
+    top: "20px",
     right: "20px",
-    width: "320px",
-    maxHeight: "80vh",
+    width: "480px",
+    maxHeight: "90vh",
     overflowY: "auto",
-    background: "white",
-    border: "1px solid #ccc",
+    zIndex: "9999999",
+    boxShadow: "0 10px 30px rgba(0,0,0,0.15)",
     borderRadius: "8px",
-    padding: "12px",
-    zIndex: "999999",
-    fontFamily: "system-ui, -apple-system, BlinkMacSystemFont, sans-serif",
-    fontSize: "14px",
-    boxShadow: "0 4px 12px rgba(0,0,0,0.15)"
+    background: "transparent", // The container inside will have the background
+    fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif'
   });
 
-  panel.innerHTML = `
-    <div style="font-weight:bold; margin-bottom:8px; display:flex; justify-content:space-between; align-items:center;">
-      <span>${strings.title}</span>
-      <button id="klein-copilot-close" style="
-        border:none;
-        background:transparent;
-        cursor:pointer;
-        font-size:16px;
-        line-height:16px;
-      ">&times;</button>
-    </div>
-    <div style="display:flex; align-items:center; gap:6px; margin-bottom:8px;">
-      <label for="klein-lang-select" style="font-size:12px; color:#444;">${strings.languageLabel}</label>
-      <select id="klein-lang-select" style="flex:1;">
-        <option value="de"${currentLanguage === "de" ? " selected" : ""}>Deutsch</option>
-        <option value="en"${currentLanguage === "en" ? " selected" : ""}>English</option>
-      </select>
-    </div>
-    <div style="display:flex; align-items:center; gap:6px; margin-bottom:8px;">
-      <label for="klein-goal-select" style="font-size:12px; color:#444;">${strings.applicationTypeLabel}</label>
-      <select id="klein-goal-select" style="flex:1;">
-        <option value="single"${currentGoalType === "single" ? " selected" : ""}>Single</option>
-        <option value="wg"${currentGoalType === "wg" ? " selected" : ""}>WG with friend</option>
-        <option value="commercial"${currentGoalType === "commercial" ? " selected" : ""}>Commercial / mixed use</option>
-      </select>
-    </div>
-    <div style="margin-bottom:8px;">
-      <div style="font-weight:bold;">${listing.title || "Kein Titel gefunden"}</div>
-      <div style="color:#555; font-size:12px; margin-top:2px;">${listing.location || ""}</div>
-    </div>
-    <div style="margin-bottom:8px;">
-      <div><strong>kalt:</strong> ${formatEuros(listing.price_cold)}</div>
-      <div><strong>warm:</strong> ${formatEuros(listing.price_warm)}</div>
-      <div><strong>Fläche:</strong> ${formatSqm(listing.sqm)}</div>
-      <div><strong>Zimmer:</strong> ${formatRooms(listing.rooms)}</div>
-      <div><strong>€/m² kalt:</strong> ${listing.price_cold && listing.sqm ? (listing.price_cold / listing.sqm).toFixed(2) + " €/m²" : "–"}</div>
-      <div><strong>€/m² warm:</strong> ${listing.price_warm && listing.sqm ? (listing.price_warm / listing.sqm).toFixed(2) + " €/m²" : "–"}</div>
-      <div><strong>€/Zimmer warm:</strong> ${(() => {
-        if (!listing.price_warm || !listing.rooms) return "–";
-        const costPerRoom = listing.price_warm / listing.rooms;
-        console.log("[UI] Cost per room calculation:", listing.price_warm, "/", listing.rooms, "=", costPerRoom);
-        return costPerRoom.toFixed(2) + " €/Zimmer";
-      })()}</div>
-    </div>
-    <button id="klein-analyze-btn" style="
-      padding:6px 10px;
-      border-radius:6px;
-      border:1px solid #d1d5db;
-      background:#f3f4f6;
-      color:#374151;
-      cursor:pointer;
-      font-size:14px;
-      width:100%;
-      margin-bottom:8px;
-    ">
-      ${strings.analyze}
-    </button>
-    <div id="klein-analysis-results" style="display:none; margin-bottom:8px; padding:8px; background:#f9fafb; border-radius:6px; border:1px solid #e5e7eb; font-size:12px;"></div>
-    <button id="klein-generate-btn" style="
-      padding:6px 10px;
-      border-radius:6px;
-      border:none;
-      background:#2563eb;
-      color:white;
-      cursor:pointer;
-      font-size:14px;
-      width:100%;
-    ">
-      ${strings.generate}
-    </button>
-    <div id="klein-loading-container" style="display:none; margin-top:8px;">
-      <div style="width:100%; height:4px; background:#e5e7eb; border-radius:2px; overflow:hidden;">
-        <div id="klein-loading-bar" style="
-          width:0%;
-          height:100%;
-          background:linear-gradient(90deg, #2563eb, #3b82f6, #2563eb);
-          background-size:200% 100%;
-          animation:klein-loading 1.5s ease-in-out infinite;
-          transition:width 0.3s ease;
-        "></div>
-      </div>
-      <div id="klein-loading-text" style="font-size:11px; color:#666; margin-top:4px; text-align:center;">Connecting to OpenRouter API...</div>
-    </div>
-    <div id="klein-status" style="font-size:12px; color:#555; margin-top:6px;"></div>
+  // CSS from popup.html, slightly adapted
+  const styles = `
     <style>
-      @keyframes klein-loading {
-        0% { background-position: 200% 0; }
-        100% { background-position: -200% 0; }
+      #klein-copilot-root * {
+        box-sizing: border-box;
+      }
+      
+      .kc-container {
+        background: #ffffff;
+        border: 1px solid #ddd;
+        border-radius: 8px;
+        padding: 16px;
+        color: #333;
+        font-size: 14px;
+        line-height: 1.5;
+      }
+
+      .kc-header {
+        margin-bottom: 16px;
+        border-bottom: 1px solid #ddd;
+        padding-bottom: 12px;
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+      }
+
+      .kc-h1 {
+        margin: 0 0 4px 0;
+        font-size: 16px;
+        font-weight: 500;
+        color: #333;
+      }
+
+      .kc-subtitle {
+        margin: 0;
+        font-size: 13px;
+        color: #5f6368;
+      }
+
+      .kc-close-btn {
+        background: transparent;
+        border: none;
+        font-size: 20px;
+        line-height: 1;
+        cursor: pointer;
+        color: #999;
+        padding: 0;
+      }
+      .kc-close-btn:hover { color: #333; }
+
+      .kc-settings-row {
+        display: flex;
+        gap: 12px;
+        margin-bottom: 16px;
+        background: #f7f7f7;
+        border: 1px solid #ddd;
+        border-radius: 8px;
+        padding: 12px;
+      }
+
+      .kc-select-wrapper {
+        flex: 1;
+        position: relative;
+      }
+
+      .kc-select {
+        width: 100%;
+        padding: 8px 10px;
+        font-size: 13px;
+        font-weight: 600;
+        border: 1px solid #ddd;
+        border-radius: 6px;
+        background-color: #ffffff;
+        color: #333;
+        appearance: none;
+        cursor: pointer;
+      }
+
+      .kc-select-wrapper::after {
+        content: "▼";
+        font-size: 10px;
+        color: #5f6368;
+        position: absolute;
+        right: 10px;
+        top: 50%;
+        transform: translateY(-50%);
+        pointer-events: none;
+      }
+
+      .kc-summary-card {
+        background-color: #ffffff;
+        border: 1px solid #ddd;
+        border-radius: 8px;
+        padding: 16px;
+        box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+        margin-bottom: 16px;
+      }
+
+      .kc-summary-grid {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 12px 24px;
+      }
+
+      .kc-summary-item {
+        display: grid;
+        grid-template-columns: 1fr auto;
+        align-items: center;
+        font-size: 14px;
+      }
+
+      .kc-summary-label {
+        color: #333;
+        font-weight: 600;
+        font-size: 13px;
+      }
+
+      .kc-summary-value {
+        font-weight: 600;
+        color: #333;
+        text-align: right;
+      }
+
+      .kc-action-card {
+        background-color: #f7f7f7;
+        border: 1px solid #ddd;
+        border-radius: 8px;
+        padding: 16px;
+        margin-bottom: 16px;
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+      }
+
+      .kc-btn {
+        width: 100%;
+        padding: 12px 14px;
+        border-radius: 8px;
+        font-size: 14px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.18s ease;
+        text-align: center;
+        border: none;
+      }
+
+      .kc-btn-primary {
+        background-color: #3b82f6;
+        color: white;
+        border: 1px solid #3b82f6;
+        box-shadow: 0 6px 16px rgba(59, 130, 246, 0.18);
+      }
+
+      .kc-btn-primary:hover {
+        background-color: #2563eb;
+        border-color: #2563eb;
+      }
+
+      .kc-btn-secondary {
+        background-color: transparent;
+        color: #333;
+        border: 1px solid #ddd;
+      }
+
+      .kc-btn-secondary:hover {
+        background-color: #ffffff;
+        border-color: #c9ced6;
+      }
+
+      #kc-output-container {
+        min-height: 110px;
+        border: 1px dashed #ddd;
+        border-radius: 8px;
+        background-color: #fafafa;
+        margin-bottom: 16px;
+        padding: 16px;
+        color: #5f6368;
+        font-size: 13px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        text-align: center;
+      }
+
+      .kc-footer {
+        text-align: center;
+        font-size: 11px;
+        color: #8c8f94;
+        padding-top: 12px;
+        border-top: 1px solid #ddd;
       }
     </style>
   `;
 
+  panel.innerHTML = `
+    ${styles}
+    <div class="kc-container">
+      <!-- Header -->
+      <div class="kc-header">
+        <div>
+          <h1 class="kc-h1">Classifieds Copilot</h1>
+          <p class="kc-subtitle">Wohnungsanalyse für Bewerbungen</p>
+        </div>
+        <button id="kc-close-btn" class="kc-close-btn">&times;</button>
+      </div>
+
+      <!-- Settings Row -->
+      <div class="kc-settings-row">
+        <div class="kc-select-wrapper">
+          <select id="kc-language-select" class="kc-select">
+            <option value="de">Deutsch</option>
+            <option value="en">English</option>
+          </select>
+        </div>
+        <div class="kc-select-wrapper">
+          <select id="kc-profile-select" class="kc-select">
+            <option value="default">Standard Profil</option>
+            <option value="student">Student</option>
+            <option value="couple">Paar</option>
+          </select>
+        </div>
+      </div>
+
+      <!-- Property Summary Card -->
+      <div class="kc-summary-card">
+        <div class="kc-summary-grid">
+          <div class="kc-summary-item">
+            <span class="kc-summary-label">Fläche</span>
+            <span class="kc-summary-value" id="kc-val-area">– m²</span>
+          </div>
+          <div class="kc-summary-item">
+            <span class="kc-summary-label">Zimmer</span>
+            <span class="kc-summary-value" id="kc-val-rooms">–</span>
+          </div>
+          <div class="kc-summary-item">
+            <span class="kc-summary-label">Kaltmiete</span>
+            <span class="kc-summary-value" id="kc-val-cold">– €</span>
+          </div>
+          <div class="kc-summary-item">
+            <span class="kc-summary-label">Warmmiete</span>
+            <span class="kc-summary-value" id="kc-val-warm">– €</span>
+          </div>
+          <div class="kc-summary-item">
+            <span class="kc-summary-label">€/m² (kalt)</span>
+            <span class="kc-summary-value" id="kc-val-sqm-price">– €</span>
+          </div>
+          <div class="kc-summary-item">
+            <span class="kc-summary-label">Ort</span>
+            <span class="kc-summary-value" id="kc-val-location">–</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Primary Action Card -->
+      <div class="kc-action-card">
+        <button id="kc-btn-audit" class="kc-btn kc-btn-primary">Run Audit</button>
+        <button id="kc-btn-generate" class="kc-btn kc-btn-secondary">Generate Message</button>
+      </div>
+
+      <!-- Output Container -->
+      <div id="kc-output-container">
+        Audit results will appear here.
+      </div>
+
+      <!-- Footer -->
+      <div class="kc-footer">
+        Miet-Audit • Beta
+      </div>
+    </div>
+  `;
+
   document.body.appendChild(panel);
 
-  const closeBtn = document.getElementById("klein-copilot-close");
-  const langSelect = document.getElementById("klein-lang-select");
-  const goalSelect = document.getElementById("klein-goal-select");
-  const generateBtn = document.getElementById("klein-generate-btn");
-  const analyzeBtn = document.getElementById("klein-analyze-btn");
-  const analysisResults = document.getElementById("klein-analysis-results");
-  const statusEl = document.getElementById("klein-status");
-
-  const refreshStrings = () => STRINGS[currentLanguage] || STRINGS[DEFAULT_LANGUAGE];
-
-  const setStatus = (msg, isError = false) => {
-    statusEl.textContent = msg;
-    statusEl.style.color = isError ? "#b91c1c" : "#555";
+  // Elements
+  const els = {
+    area: document.getElementById("kc-val-area"),
+    rooms: document.getElementById("kc-val-rooms"),
+    cold: document.getElementById("kc-val-cold"),
+    warm: document.getElementById("kc-val-warm"),
+    sqmPrice: document.getElementById("kc-val-sqm-price"),
+    location: document.getElementById("kc-val-location"),
+    btnAudit: document.getElementById("kc-btn-audit"),
+    btnGenerate: document.getElementById("kc-btn-generate"),
+    output: document.getElementById("kc-output-container"),
+    langSelect: document.getElementById("kc-language-select"),
+    closeBtn: document.getElementById("kc-close-btn")
   };
 
-  closeBtn.addEventListener("click", () => panel.remove());
+  // Render Summary
+  const renderSummary = (l) => {
+    els.area.textContent = l.sqm ? `${formatNumber(l.sqm)} m²` : "–";
+    els.rooms.textContent = l.rooms ? formatNumber(l.rooms) : "–";
+    els.cold.textContent = l.price_cold ? formatCurrency(l.price_cold) : "–";
+    els.warm.textContent = l.price_warm ? formatCurrency(l.price_warm) : "–";
+    els.location.textContent = l.location ? l.location : "–";
 
-  langSelect.addEventListener("change", async (e) => {
-    currentLanguage = e.target.value;
-    await setSettings({ language: currentLanguage });
-    const s = refreshStrings();
-    generateBtn.textContent = s.generate;
-    setStatus("");
-  });
-
-  goalSelect.addEventListener("change", (e) => {
-    currentGoalType = e.target.value;
-    setStatus("");
-  });
-
-  generateBtn.addEventListener("click", async () => {
-    const s = refreshStrings();
-    generateBtn.disabled = true;
-    generateBtn.textContent = s.generating;
-    setStatus("");
-
-    // Show loading bar
-    const loadingContainer = document.getElementById("klein-loading-container");
-    const loadingBar = document.getElementById("klein-loading-bar");
-    const loadingText = document.getElementById("klein-loading-text");
-    loadingContainer.style.display = "block";
-
-    // Simulate progress updates
-    const progressSteps = [
-      { percent: 20, text: "Connecting to OpenRouter API..." },
-      { percent: 40, text: "Sending listing data..." },
-      { percent: 60, text: "AI is generating your message..." },
-      { percent: 80, text: "Finalizing response..." }
-    ];
-
-    let currentStep = 0;
-    const progressInterval = setInterval(() => {
-      if (currentStep < progressSteps.length) {
-        const step = progressSteps[currentStep];
-        loadingBar.style.width = `${step.percent}%`;
-        loadingText.textContent = step.text;
-        currentStep++;
-      }
-    }, 600);
-
-    try {
-      const message = await generateMessage({
-        listing,
-        goalType: currentGoalType,
-        language: currentLanguage
-      });
-
-      // Complete the progress bar
-      clearInterval(progressInterval);
-      loadingBar.style.width = "100%";
-      loadingText.textContent = "Done! Copying to clipboard...";
-
-      await navigator.clipboard.writeText(message);
-      
-      // Hide loading bar after a brief moment
-      setTimeout(() => {
-        loadingContainer.style.display = "none";
-        loadingBar.style.width = "0%";
-      }, 500);
-      
-      setStatus(s.copied);
-    } catch (err) {
-      console.error("[Kleinanzeigen Copilot] Generate error", err);
-      clearInterval(progressInterval);
-      loadingContainer.style.display = "none";
-      loadingBar.style.width = "0%";
-      setStatus(`${refreshStrings().error}`, true);
-    } finally {
-      const sDone = refreshStrings();
-      generateBtn.disabled = false;
-      generateBtn.textContent = sDone.generate;
+    if (l.price_cold && l.sqm) {
+      const perSqm = (l.price_cold / l.sqm);
+      els.sqmPrice.textContent = new Intl.NumberFormat('de-DE', { style: 'currency', currency: 'EUR' }).format(perSqm) + " / m²";
+    } else {
+      els.sqmPrice.textContent = "–";
     }
-  });
+  };
 
-  analyzeBtn.addEventListener("click", async () => {
-    const s = refreshStrings();
-    analyzeBtn.disabled = true;
-    analyzeBtn.textContent = s.analyzing;
-    analysisResults.style.display = "none";
-    setStatus("");
+  renderSummary(listing);
 
+  // Event Listeners
+  els.closeBtn.addEventListener("click", () => panel.remove());
+
+  els.btnAudit.addEventListener("click", async () => {
+    setLoading(true);
+    els.output.innerHTML = "";
     try {
       const result = await analyzeListing({ listing });
-      
-      // Render results
-      let html = `<div style="font-weight:bold; margin-bottom:4px;">${s.analysisTitle}</div>`;
-      
-      // Risk Level Badge
-      const riskColor = result.summary.risk_level === "high" ? "#ef4444" : 
-                        result.summary.risk_level === "medium" ? "#f59e0b" : "#10b981";
-      const riskLabel = result.summary.risk_level === "high" ? s.riskHigh :
-                        result.summary.risk_level === "medium" ? s.riskMedium : s.riskLow;
-      
-      html += `<div style="display:inline-block; padding:2px 6px; border-radius:4px; background:${riskColor}; color:white; font-size:11px; font-weight:bold; margin-bottom:6px;">${riskLabel}</div>`;
-      html += `<div style="margin-bottom:8px;">${result.summary.explanation}</div>`;
-
-      // Dimensions
-      if (result.dimensions) {
-        html += `<div style="margin-bottom:8px; padding:6px; background:#fff; border-radius:4px; border:1px solid #eee;">`;
-        html += `<div style="font-weight:bold; margin-bottom:4px; font-size:11px; color:#444;">DETAILS</div>`;
-        html += `<div style="display:grid; grid-template-columns: 1fr 1fr; gap:y-2px gap-x-4px; font-size:11px;">`;
-        
-        const dimLabels = {
-          photos: "Photos",
-          price_fairness: "Price",
-          contract_type: "Contract",
-          registration_status: "Anmeldung",
-          description_quality: "Desc.",
-          landlord_transparency: "Landlord"
-        };
-
-        for (const [key, value] of Object.entries(result.dimensions)) {
-           html += `<div><span style="color:#666;">${dimLabels[key] || key}:</span> <span style="font-weight:500;">${value}</span></div>`;
-        }
-        html += `</div></div>`;
-      }
-
-      // Flags
-      const renderFlags = (flags, color, icon) => {
-        if (!flags || flags.length === 0) return "";
-        return flags.map(f => `
-          <div style="margin-bottom:4px; padding-left:8px; border-left:2px solid ${color};">
-            <div style="font-weight:bold; color:${color};">${icon} ${f.type}</div>
-            <div>${f.reason}</div>
-            <div style="font-style:italic; color:#666; font-size:11px;">"${f.evidence}"</div>
-          </div>
-        `).join("");
-      };
-
-      html += renderFlags(result.red_flags, "#ef4444", "⚠️");
-      html += renderFlags(result.yellow_flags, "#f59e0b", "✋");
-      html += renderFlags(result.green_flags, "#10b981", "✅");
-
-      // Clarification Questions
-      if (result.clarification_questions && result.clarification_questions.length > 0) {
-        html += `<div style="margin-top:8px; padding-top:8px; border-top:1px solid #eee;">`;
-        html += `<div style="font-weight:bold; margin-bottom:4px; font-size:11px; color:#2563eb;">QUESTIONS TO ASK</div>`;
-        html += result.clarification_questions.map(q => `
-          <div style="margin-bottom:6px; padding-left:8px; border-left:2px solid #2563eb;">
-            <div style="font-weight:bold; color:#1e40af;">❓ ${q.question}</div>
-            <div style="font-size:11px; color:#555;">${q.reason}</div>
-          </div>
-        `).join("");
-        html += `</div>`;
-      }
-
-      analysisResults.innerHTML = html;
-      analysisResults.style.display = "block";
-
-    } catch (error) {
-      console.error("Analysis failed:", error);
-      setStatus(s.error, true);
+      renderAuditResult(result);
+    } catch (err) {
+      console.error(err);
+      els.output.innerHTML = `<div style="color: red;">Fehler bei der Analyse: ${err.message}</div>`;
     } finally {
-      analyzeBtn.disabled = false;
-      analyzeBtn.textContent = s.analyze;
+      setLoading(false);
     }
   });
+
+  els.btnGenerate.addEventListener("click", async () => {
+    setLoading(true);
+    els.output.innerHTML = "";
+    try {
+      const language = els.langSelect.value;
+      const message = await generateMessage({ listing, language });
+      renderMessageResult(message);
+    } catch (err) {
+      console.error(err);
+      els.output.innerHTML = `<div style="color: red;">Fehler bei der Generierung: ${err.message}</div>`;
+    } finally {
+      setLoading(false);
+    }
+  });
+
+  function setLoading(isLoading) {
+    if (isLoading) {
+      els.btnAudit.disabled = true;
+      els.btnGenerate.disabled = true;
+      els.btnAudit.textContent = "Analysiere...";
+      els.output.innerHTML = '<div style="text-align: center;">Lade Daten...</div>';
+    } else {
+      els.btnAudit.disabled = false;
+      els.btnGenerate.disabled = false;
+      els.btnAudit.textContent = "Run Audit";
+    }
+  }
+
+  function renderAuditResult(data) {
+    let html = "";
+
+    // 1. Risk Analysis (Dimensions)
+    html += `<div style="margin-bottom: 16px;">
+      <h3 style="font-size: 14px; font-weight: 600; margin: 0 0 10px 0; border-bottom: 1px solid #eee; padding-bottom: 5px; color: #333;">Risiko-Analyse</h3>
+      <div style="display: grid; gap: 8px;">`;
+
+    const dimensionMap = {
+      photos: { label: "Fotos", icon: "🖼️" },
+      price_fairness: { label: "Preis", icon: "💰" },
+      contract_type: { label: "Vertrag", icon: "📄" },
+      registration_status: { label: "Anmeldung", icon: "🏠" },
+      description_quality: { label: "Beschreibung", icon: "📝" },
+      landlord_transparency: { label: "Vermieter", icon: "👤" }
+    };
+
+    const dimensions = data.dimensions || data;
+
+    for (const [key, value] of Object.entries(dimensions)) {
+      if (dimensionMap[key]) {
+        const meta = dimensionMap[key];
+        let statusColor = "#6b7280"; // grey
+        if (["missing", "suspicious", "high", "weird", "no_registration", "vague"].includes(value)) statusColor = "#ef4444"; // red
+        if (["unclear", "average", "limited"].includes(value)) statusColor = "#f59e0b"; // orange
+        if (["present", "fair", "long_term", "ok", "detailed", "clear"].includes(value)) statusColor = "#10b981"; // green
+
+        html += `
+          <div style="display: flex; align-items: center; justify-content: space-between; padding: 8px; background: white; border: 1px solid #eee; border-radius: 6px;">
+            <div style="display: flex; align-items: center; gap: 8px;">
+              <span>${meta.icon}</span>
+              <span style="font-size: 13px; font-weight: 500; color: #333;">${meta.label}</span>
+            </div>
+            <span style="font-size: 12px; font-weight: 600; color: ${statusColor}; text-transform: capitalize;">
+              ${value.replace(/_/g, " ")}
+            </span>
+          </div>
+        `;
+      }
+    }
+    html += `</div></div>`;
+
+    // 2. Questions
+    if (data.clarification_questions && Array.isArray(data.clarification_questions) && data.clarification_questions.length > 0) {
+      html += `<div style="margin-bottom: 16px;">
+        <h3 style="font-size: 14px; font-weight: 600; margin: 0 0 8px 0; border-bottom: 1px solid #eee; padding-bottom: 5px; color: #333;">Fragen an den Vermieter</h3>
+        <ul style="padding-left: 20px; margin: 0; font-size: 13px; color: #374151;">
+          ${data.clarification_questions.map(q => {
+            const text = typeof q === 'string' ? q : q.question;
+            return `<li style="margin-bottom: 4px;">${text}</li>`;
+          }).join("")}
+        </ul>
+      </div>`;
+    }
+
+    // 3. Verdict
+    if (data.summary) {
+      const riskLevel = data.summary.risk_level || "unknown";
+      let verdictBg = "#f3f4f6";
+      let verdictColor = "#374151";
+      let verdictBorder = "#d1d5db";
+
+      if (riskLevel === "low") {
+        verdictBg = "#ecfdf5"; verdictColor = "#065f46"; verdictBorder = "#a7f3d0";
+      } else if (riskLevel === "medium") {
+        verdictBg = "#fffbeb"; verdictColor = "#92400e"; verdictBorder = "#fde68a";
+      } else if (riskLevel === "high") {
+        verdictBg = "#fef2f2"; verdictColor = "#991b1b"; verdictBorder = "#fecaca";
+      }
+
+      html += `
+        <div style="padding: 12px 16px; border-radius: 8px; font-weight: 600; text-align: center; margin-top: 20px; background-color: ${verdictBg}; color: ${verdictColor}; border: 1px solid ${verdictBorder};">
+          Fazit: ${data.summary.explanation || riskLevel}
+        </div>
+      `;
+    }
+
+    els.output.innerHTML = html;
+    els.output.style.display = "block";
+    els.output.style.alignItems = "start";
+    els.output.style.justifyContent = "start";
+  }
+
+  function renderMessageResult(message) {
+    els.output.innerHTML = `
+      <div style="width: 100%;">
+        <h3 style="font-size: 14px; font-weight: 600; margin: 0 0 10px 0; color: #333;">Generierte Nachricht</h3>
+        <textarea style="width: 100%; height: 150px; padding: 8px; border: 1px solid #ddd; border-radius: 6px; font-size: 12px; resize: vertical; font-family: inherit;">${message}</textarea>
+        <button id="kc-copy-btn" style="margin-top: 8px; width: 100%; padding: 8px; background: #eee; border: none; border-radius: 4px; cursor: pointer; font-size: 12px; font-weight: 600; color: #333;">In die Zwischenablage kopieren</button>
+      </div>
+    `;
+    
+    document.getElementById("kc-copy-btn").addEventListener("click", () => {
+      navigator.clipboard.writeText(message);
+      const btn = document.getElementById("kc-copy-btn");
+      btn.textContent = "Kopiert!";
+      setTimeout(() => btn.textContent = "In die Zwischenablage kopieren", 2000);
+    });
+    
+    els.output.style.display = "block";
+    els.output.style.alignItems = "start";
+    els.output.style.justifyContent = "start";
+  }
 }

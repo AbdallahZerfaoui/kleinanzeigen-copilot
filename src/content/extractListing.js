@@ -163,6 +163,8 @@ export function extractListing() {
   );
 
   const locationEl =
+    document.querySelector("#viewad-locality") ||
+    document.querySelector('[itemprop="address"]') ||
     document.querySelector('[data-testid="location"]') ||
     document.querySelector(".location");
   const location = cleanText(locationEl ? locationEl.textContent : "");

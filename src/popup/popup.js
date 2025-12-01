@@ -1,4 +1,4 @@
-// popup.js
+import { DEFAULT_PROFILE } from "../defaultProfile.js";
 
 const profileTextarea = document.getElementById("profile");
 const saveButton = document.getElementById("save");
@@ -9,9 +9,7 @@ chrome.storage.sync.get(["profileText"], (result) => {
   if (result.profileText) {
     profileTextarea.value = result.profileText;
   } else {
-    profileTextarea.value = `Ich bin Abdallah, Softwareentwickler in Heilbronn.
-Nichtraucher, keine Haustiere, ruhiger Mieter.
-Stabile Einkünfte, Interesse an längerfristigem Mietverhältnis.`;
+    profileTextarea.value = DEFAULT_PROFILE;
   }
 });
 

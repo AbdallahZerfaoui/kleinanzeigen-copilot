@@ -170,6 +170,7 @@ export function extractListing() {
   let priceCold = null;
   let priceWarm = null;
   let extraCosts = null;
+  let heatingCosts = null;
   let sqm = null;
   let rooms = null;
   const detailItems = Array.from(
@@ -191,6 +192,8 @@ export function extractListing() {
       priceWarm = parseEuro(valueText);
     } else if (!extraCosts && (/extra\s*costs|nebenkosten|betriebskosten|additional\s*costs/.test(labelText))) {
       extraCosts = parseEuro(valueText);
+    } else if (!heatingCosts && (/heizkosten|heating\s*costs/.test(labelText))) {
+      heatingCosts = parseEuro(valueText);
     }
 
     if (!sqm && /wohnfl|living\s*space|fläche/.test(labelText)) {
@@ -235,8 +238,14 @@ export function extractListing() {
   }
 
   // Derive warm price if possible
-  if (priceWarm === null && priceCold !== null && extraCosts !== null) {
-    priceWarm = priceCold + extraCosts;
+  if (priceWarm === null && priceCold !== null) {
+    let totalExtra = 0;
+    if (extraCosts !== null) totalExtra += extraCosts;
+    if (heatingCosts !== null) totalExtra += heatingCosts;
+    
+    if (totalExtra > 0) {
+      priceWarm = priceCold + totalExtra;
+    }
   }
 
   const featureEls = Array.from(

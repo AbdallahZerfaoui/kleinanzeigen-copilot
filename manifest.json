@@ -6,7 +6,7 @@
   "permissions": ["storage", "scripting", "activeTab", "clipboardWrite"],
   "content_scripts": [
     {
-      "matches": ["*://www.kleinanzeigen.de/*"],
+      "matches": ["*://www.kleinanzeigen.de/s-anzeige/*"],
       "js": ["src/content/main.js"],
       "run_at": "document_end"
     }
